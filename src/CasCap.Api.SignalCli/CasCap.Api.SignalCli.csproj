@@ -8,12 +8,7 @@
     <IsPackable>true</IsPackable>
     <Description>Typed .NET client for the signal-cli REST API with REST polling and JSON-RPC WebSocket transports, webhook endpoints, health checks, and INotifier integration.</Description>
     <PackageTags>signal,signal-cli,messaging,rest-api,websocket,json-rpc,notifications</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="README.md" Pack="true" PackagePath="\" />
-  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="CasCap.Api.SignalCli.Tests" />

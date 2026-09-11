@@ -10,10 +10,11 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <Authors>Alex Vincent</Authors>
-    <Copyright>Alex Vincent</Copyright>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageProjectUrl>https://github.com/f2calv/CasCap.Api.SignalCli</PackageProjectUrl>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>See https://github.com/f2calv/CasCap.Api.SignalCli/releases</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -40,6 +41,7 @@
 
   <ItemGroup>
     <None Include="..\..\icon.png" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
   </ItemGroup>
 
 </Project>
