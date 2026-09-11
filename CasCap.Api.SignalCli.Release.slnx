@@ -1,0 +1,18 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Release" />
+  </Configurations>
+  <Folder Name="/CasCap.Api.SignalCli/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/CasCap.Api.SignalCli/Samples/">
+    <Project Path="samples/GenericHost/GenericHost.csproj" />
+  </Folder>
+  <Folder Name="/CasCap.Api.SignalCli/">
+    <Project Path="src/CasCap.Api.SignalCli.AspNetCore/CasCap.Api.SignalCli.AspNetCore.csproj" />
+    <Project Path="src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj" />
+    <Project Path="src/CasCap.Api.SignalCli/CasCap.Api.SignalCli.csproj" />
+  </Folder>
+</Solution>

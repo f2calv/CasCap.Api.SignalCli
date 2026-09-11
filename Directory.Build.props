@@ -1,0 +1,45 @@
+<Project>
+
+  <PropertyGroup>
+    <RootNamespace>CasCap</RootNamespace>
+    <LangVersion>14.0</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Authors>Alex Vincent</Authors>
+    <Copyright>Alex Vincent</Copyright>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageProjectUrl>https://github.com/f2calv/CasCap.Api.SignalCli</PackageProjectUrl>
+    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true' OR '$(TF_BUILD)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- IDE1006 - suppress Roslyn naming convention messages -->
+    <!-- IDE0079 - remove unnecessary suppression -->
+    <!-- IDE0042 - variable declaration can be deconstructed -->
+    <!-- CS0162 - unreachable code detected -->
+    <!-- S125 - remove commented-out code -->
+    <!-- NETSDK1233 - targeting .NET 10.0 in older Visual Studio versions is not supported -->
+    <NoWarn>IDE1006;IDE0079;IDE0042;CS0162;S125;NETSDK1233</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageIcon>icon.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\icon.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

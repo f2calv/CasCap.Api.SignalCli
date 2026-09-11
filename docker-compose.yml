@@ -1,0 +1,19 @@
+services:
+  signalcli:
+    image: bbernhard/signal-cli-rest-api:0.100
+    ports:
+      - 8080:8080
+    environment:
+      MODE: json-rpc
+    volumes:
+      - signalcli_data:/home/.local/share/signal-cli
+    healthcheck:
+      test: [ CMD-SHELL, curl -sf http://localhost:8080/v1/health || exit 1 ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  signalcli_data:

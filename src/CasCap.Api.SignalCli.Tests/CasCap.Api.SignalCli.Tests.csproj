@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CasCap.Tests</RootNamespace>
+    <UserSecretsId>890bd946-ed0b-4c13-abdf-070bc0b3fabc</UserSecretsId>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="appsettings.Test.json" CopyToOutputDirectory="Always" />
+    <Content Include="appsettings.Local.Test.json" CopyToOutputDirectory="Always" Condition="Exists('appsettings.Local.Test.json')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CasCap.Api.SignalCli\CasCap.Api.SignalCli.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Configuration\CasCap.Common.Configuration.csproj" />
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Extensions\CasCap.Common.Extensions.csproj" />
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Logging\CasCap.Common.Logging.csproj" />
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Net\CasCap.Common.Net.csproj" />
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Testing\CasCap.Common.Testing.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <PackageReference Include="CasCap.Common.Configuration" />
+    <PackageReference Include="CasCap.Common.Extensions" />
+    <PackageReference Include="CasCap.Common.Logging" />
+    <PackageReference Include="CasCap.Common.Net" />
+    <PackageReference Include="CasCap.Common.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+</Project>
