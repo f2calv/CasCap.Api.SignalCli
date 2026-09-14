@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# HVE / Copilot runtime artefacts
+.copilot-tracking/

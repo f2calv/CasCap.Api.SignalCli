@@ -68,6 +68,51 @@ public class SignalCliJsonRpcClientServiceUnitTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void JsonRpcNotification_WithAudioAttachment_DeserializesAttachmentMetadata()
+    {
+        //A redacted, attachment-only voice-note shape: synthetic identifiers, no message body, no filename.
+        const string json = """
+            {
+              "jsonrpc": "2.0",
+              "method": "receive",
+              "params": {
+                "envelope": {
+                  "source": "+10000000000",
+                  "timestamp": 1712153610000,
+                  "dataMessage": {
+                    "timestamp": 1712153610000,
+                    "attachments": [
+                      {
+                        "contentType": "audio/aac",
+                        "id": "synthetic-attachment-id",
+                        "size": 12345
+                      }
+                    ]
+                  }
+                },
+                "account": "+10000000000"
+              }
+            }
+            """;
+
+        var notification = json.FromJson<SignalCliJsonRpcNotification>();
+
+        Assert.NotNull(notification);
+        Assert.NotNull(notification.Params);
+        var dataMessage = notification.Params.Envelope.DataMessage;
+        Assert.NotNull(dataMessage);
+        Assert.Null(dataMessage.Message);
+        Assert.NotNull(dataMessage.Attachments);
+        var attachment = Assert.Single(dataMessage.Attachments);
+        Assert.Equal("synthetic-attachment-id", attachment.Id);
+        Assert.Equal("audio/aac", attachment.ContentType);
+        Assert.Null(attachment.Filename);
+        Assert.Equal(12345L, attachment.Size);
+        output.WriteLine(
+            $"contentType={attachment.ContentType}, hasFilename={attachment.Filename is not null}, size={attachment.Size}");
+    }
+
+    [Fact]
     public void JsonRpcNotification_WithNullParams_DoesNotThrow()
     {
         const string json = """{"jsonrpc":"2.0","method":"receive"}""";
