@@ -1,3 +1,4 @@
+using CasCap.Models;
 using CasCap.Models.Dtos;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -16,6 +17,7 @@ namespace CasCap.Samples;
 public sealed partial class SignalCliWorker(
     ILogger<SignalCliWorker> logger,
     IOptions<VoiceSttHarnessConfig> voiceSttHarnessOptions,
+    IOptions<SignalCliConfig> signalCliConfig,
     IHostApplicationLifetime hostApplicationLifetime,
     ISignalCliClient signalCliClient,
     ISignalCliReceiver signalCliReceiver,
@@ -43,11 +45,17 @@ public sealed partial class SignalCliWorker(
         LogConnected(logger, about.Version, about.Build, about.Mode ?? "unknown");
         LogHarnessState(logger, config.Enabled, config.Provider.ToString(), config.TranscodeToWav);
 
+        var groupId = await ResolveGroupId(config, stoppingToken);
+
         await foreach (var message in signalCliReceiver.StreamMessagesAsync(stoppingToken))
         {
             LogMessageReceived(logger, message.Envelope.DataMessage is not null);
 
             if (!config.Enabled)
+                continue;
+
+            //Every consumer of the account sees the whole stream, so ignore other deployments' groups.
+            if (NormalizeGroupId(message.Envelope.DataMessage?.GroupInfo?.GroupId) != NormalizeGroupId(groupId))
                 continue;
 
             var accepted = await TryProcessVoiceNote(message, stoppingToken);
@@ -59,6 +67,56 @@ public sealed partial class SignalCliWorker(
             }
         }
     }
+
+    #region Group scoping
+
+    /// <summary>Resolves the configured group by name, falling back to a configured raw identifier.</summary>
+    private async Task<string> ResolveGroupId(VoiceSttHarnessConfig config, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(config.GroupName))
+        {
+            if (string.IsNullOrWhiteSpace(config.GroupId))
+                throw new InvalidOperationException(
+                    "Signal mode requires VoiceSttHarness:GroupName or VoiceSttHarness:GroupId; without one the "
+                    + "harness would act on messages belonging to other consumers of this account.");
+
+            LogGroupResolved(logger, false);
+            return config.GroupId;
+        }
+
+        var groups = await signalCliClient.ListGroups(signalCliConfig.Value.PhoneNumber, cancellationToken);
+        var match = groups?.FirstOrDefault(g => g.Name == config.GroupName);
+        if (match?.Id is not null)
+        {
+            LogGroupResolved(logger, true);
+            return match.Id;
+        }
+
+        if (string.IsNullOrWhiteSpace(config.GroupId))
+            throw new InvalidOperationException(
+                "The configured VoiceSttHarness:GroupName was not found and no GroupId fallback is configured.");
+
+        LogGroupResolved(logger, false);
+        return config.GroupId;
+    }
+
+    /// <summary>
+    /// Normalizes a Signal group identifier to its raw base64 form. The groups list endpoint returns the raw
+    /// key while the receive stream prefixes and double-encodes it as <c>group.{Base64(rawKey)}</c>.
+    /// </summary>
+    private static string? NormalizeGroupId(string? groupId)
+    {
+        if (groupId is null)
+            return null;
+        if (groupId.StartsWith("group.", StringComparison.Ordinal))
+        {
+            var encoded = groupId["group.".Length..];
+            return Encoding.UTF8.GetString(Convert.FromBase64String(encoded));
+        }
+        return groupId;
+    }
+
+    #endregion
 
     #region File mode
 
@@ -295,6 +353,10 @@ public sealed partial class SignalCliWorker(
 
     [LoggerMessage(LogLevel.Information, "{ClassName} stopping after the first accepted voice note")]
     private static partial void LogHarnessStopping(ILogger logger, string className = nameof(SignalCliWorker));
+
+    [LoggerMessage(LogLevel.Information, "{ClassName} group scope resolved by name={ResolvedByName}")]
+    private static partial void LogGroupResolved(ILogger logger, bool resolvedByName,
+        string className = nameof(SignalCliWorker));
 
     #endregion
 }

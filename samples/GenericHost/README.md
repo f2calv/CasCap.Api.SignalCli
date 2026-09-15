@@ -42,8 +42,17 @@ The harness never sends a Signal reply.
 Start with file mode. It removes every Signal variable from the first run, and a failure there is unambiguously an
 ffmpeg or speech-to-text problem.
 
-> Registering the same phone number with a second signal-cli instance breaks the first one. Link the container as an
-> additional device instead of registering, or point `CasCap:SignalCliConfig:BaseAddress` at an existing instance.
+> Registering the same phone number with a second signal-cli instance breaks the first one. Point
+> `CasCap:SignalCliConfig:BaseAddress` at an existing instance instead.
+
+### Group Scoping
+
+Every consumer of one signal-cli account sees the **whole** receive stream, so several deployments can share an
+instance only by filtering to their own Signal group. Signal mode therefore requires `VoiceSttHarness:GroupName`
+(or `GroupId`), and ignores every envelope from any other group.
+
+Give the harness its own dedicated group. Pointing it at a group another deployment already services would make two
+consumers act on the same message.
 
 ### Providers
 
@@ -85,6 +94,8 @@ harness ships disabled.
 | `Enabled` | `false` | Turns Signal mode on; when `false` the worker only logs envelope arrival |
 | `Provider` | `WhisperAsr` | Selects the speech-to-text wire contract |
 | `AudioFilePath` | `null` | Switches to file mode and transcribes this recording once, without contacting signal-cli |
+| `GroupName` | `null` | The Signal group the harness listens to, resolved by name. Required in Signal mode |
+| `GroupId` | `null` | Raw group identifier, used when `GroupName` cannot be resolved |
 | `Endpoint` | `http://localhost:8081` | Base address of the speech-to-text server |
 | `RequestPath` | `null` | Overrides the provider's default route (`/asr` or `/inference`) |
 | `Language` | `en` | Language hint sent with the request |

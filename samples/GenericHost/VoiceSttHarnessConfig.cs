@@ -34,6 +34,16 @@ public sealed record VoiceSttHarnessConfig
     /// </remarks>
     public string? AudioFilePath { get; init; }
 
+    /// <summary>The Signal group whose messages the harness processes, resolved by name through ListGroups.</summary>
+    /// <remarks>
+    /// Every consumer of one signal-cli account sees the whole receive stream, so the harness must filter to
+    /// its own group or it will act on traffic belonging to another deployment. Use a dedicated group.
+    /// </remarks>
+    public string? GroupName { get; init; }
+
+    /// <summary>The raw group identifier, used when <see cref="GroupName"/> cannot be resolved.</summary>
+    public string? GroupId { get; init; }
+
     /// <summary>The base address of the speech-to-text server (e.g. <c>"http://localhost:8081"</c>).</summary>
     [Required, Url]
     public string Endpoint { get; init; } = "http://localhost:8081";
