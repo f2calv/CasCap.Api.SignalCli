@@ -1,0 +1,31 @@
+# Deny everything, then explicitly allow only what the build needs. An allowlist keeps the
+# context minimal, speeds up the build, and stops an unrelated edit (docs, IDE state, .git)
+# invalidating cached layers. It is also the security boundary that keeps a local secrets
+# file, a recording, or an untracked scratch file out of the build context.
+**
+
+!samples/**/*.cs
+!src/**/*.cs
+!**/*.csproj
+!**/appsettings.*
+!global.json
+!icon.png
+!**/*.props
+!**/*.targets
+
+# never leak build output, VCS metadata, or local-only secrets into the image.
+# Excluding bin/obj repo-wide also keeps generated files (e.g. *.AssemblyInfo.cs,
+# *.GlobalUsings.g.cs, *.nuget.g.props) — which the allow-list above would otherwise
+# re-include — out of the context so they don't bust the restore/COPY layer cache.
+**/bin
+**/obj
+**/.git
+**/.vs
+secrets.json
+
+# the test project is never part of the runtime image; excluding it keeps it out of the
+# csproj globs / COPY and avoids cache busts on test edits
+**/*.Tests
+
+# local audio fixtures are mounted at runtime, never baked into the image
+testdata

@@ -27,22 +27,31 @@ public sealed partial class SignalCliWorker(
     /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var config = voiceSttHarnessOptions.Value;
+
+        if (!string.IsNullOrWhiteSpace(config.AudioFilePath))
+        {
+            await RunFileMode(config, stoppingToken);
+            hostApplicationLifetime.StopApplication();
+            return;
+        }
+
         var about = await signalCliClient.GetAbout(stoppingToken);
         if (about is null)
             throw new InvalidOperationException("The signal-cli REST API did not return service metadata.");
 
         LogConnected(logger, about.Version, about.Build, about.Mode ?? "unknown");
-        LogHarnessState(logger, voiceSttHarnessOptions.Value.Enabled, voiceSttHarnessOptions.Value.TranscodeToWav);
+        LogHarnessState(logger, config.Enabled, config.Provider.ToString(), config.TranscodeToWav);
 
         await foreach (var message in signalCliReceiver.StreamMessagesAsync(stoppingToken))
         {
             LogMessageReceived(logger, message.Envelope.DataMessage is not null);
 
-            if (!voiceSttHarnessOptions.Value.Enabled)
+            if (!config.Enabled)
                 continue;
 
             var accepted = await TryProcessVoiceNote(message, stoppingToken);
-            if (accepted && voiceSttHarnessOptions.Value.StopAfterFirstAccepted)
+            if (accepted && config.StopAfterFirstAccepted)
             {
                 LogHarnessStopping(logger);
                 hostApplicationLifetime.StopApplication();
@@ -50,6 +59,37 @@ public sealed partial class SignalCliWorker(
             }
         }
     }
+
+    #region File mode
+
+    /// <summary>Transcodes and transcribes a local audio file, without contacting signal-cli.</summary>
+    private async Task<bool> RunFileMode(VoiceSttHarnessConfig config, CancellationToken cancellationToken)
+    {
+        LogHarnessState(logger, config.Enabled, config.Provider.ToString(), config.TranscodeToWav);
+
+        //The path is never logged: an operator's fixture is commonly named after the phrase it contains.
+        var path = config.AudioFilePath!;
+        if (!File.Exists(path))
+        {
+            LogAudioFileMissing(logger);
+            return false;
+        }
+
+        var audio = await File.ReadAllBytesAsync(path, cancellationToken);
+        if (audio.LongLength > config.MaxAttachmentBytes)
+        {
+            LogAttachmentTooLarge(logger, audio.LongLength, config.MaxAttachmentBytes);
+            return false;
+        }
+
+        var contentType = AudioMediaType.FromFileExtension(path);
+        LogFileModeStarted(logger, contentType, audio.Length,
+            Convert.ToHexStringLower(SHA256.HashData(audio)));
+
+        return await TranscribeAudio(audio, contentType, config, cancellationToken);
+    }
+
+    #endregion
 
     #region Voice acceptance harness
 
@@ -110,6 +150,13 @@ public sealed partial class SignalCliWorker(
 
         LogAttachmentDownloaded(logger, declaredBytes, audio.Length, Convert.ToHexStringLower(SHA256.HashData(audio)));
 
+        return await TranscribeAudio(audio, contentType, config, cancellationToken);
+    }
+
+    /// <summary>Optionally converts the audio, transcribes it, and compares the normalized transcript hash.</summary>
+    private async Task<bool> TranscribeAudio(byte[] audio, string contentType, VoiceSttHarnessConfig config,
+        CancellationToken cancellationToken)
+    {
         if (config.TranscodeToWav)
         {
             var wav = await audioTranscoder.ToWav(audio, cancellationToken);
@@ -181,8 +228,16 @@ public sealed partial class SignalCliWorker(
         string className = nameof(SignalCliWorker));
 
     [LoggerMessage(LogLevel.Information,
-        "{ClassName} voice acceptance harness enabled={Enabled}, transcodeToWav={TranscodeToWav}")]
-    private static partial void LogHarnessState(ILogger logger, bool enabled, bool transcodeToWav,
+        "{ClassName} voice acceptance harness enabled={Enabled}, provider={Provider}, transcodeToWav={TranscodeToWav}")]
+    private static partial void LogHarnessState(ILogger logger, bool enabled, string provider, bool transcodeToWav,
+        string className = nameof(SignalCliWorker));
+
+    [LoggerMessage(LogLevel.Error, "{ClassName} the configured VoiceSttHarness:AudioFilePath does not exist")]
+    private static partial void LogAudioFileMissing(ILogger logger, string className = nameof(SignalCliWorker));
+
+    [LoggerMessage(LogLevel.Information,
+        "{ClassName} file mode started, contentType={ContentType}, bytes={Bytes}, sha256={Sha256}")]
+    private static partial void LogFileModeStarted(ILogger logger, string contentType, int bytes, string sha256,
         string className = nameof(SignalCliWorker));
 
     [LoggerMessage(LogLevel.Information, "{ClassName} received a Signal envelope, hasDataMessage={HasDataMessage}")]

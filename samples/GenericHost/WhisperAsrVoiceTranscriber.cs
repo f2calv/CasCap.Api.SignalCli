@@ -3,33 +3,36 @@ using System.Text.Json;
 
 namespace CasCap.Samples;
 
-/// <summary>Posts audio to a whisper.cpp server as multipart form data and returns the transcript.</summary>
+/// <summary>Posts audio to an openai-whisper-asr-webservice server and returns the transcript.</summary>
 /// <remarks>
-/// Sample-only acceptance code. The request targets <c>{Endpoint}{RequestPath}</c> with the <c>file</c>,
-/// <c>language</c> and <c>response_format</c> parts the stock whisper.cpp server expects. The transcript is
-/// returned to the caller and never logged.
+/// Sample-only acceptance code. The request targets <c>{Endpoint}{RequestPath}</c> with the
+/// <c>audio_file</c> part and the <c>task</c>, <c>language</c>, <c>encode</c> and <c>output</c> query
+/// parameters that service expects. The transcript is returned to the caller and never logged.
 /// </remarks>
-public sealed partial class WhisperCppVoiceTranscriber(
-    ILogger<WhisperCppVoiceTranscriber> logger,
+public sealed partial class WhisperAsrVoiceTranscriber(
+    ILogger<WhisperAsrVoiceTranscriber> logger,
     IOptions<VoiceSttHarnessConfig> options,
     IHttpClientFactory httpClientFactory) : IVoiceTranscriber
 {
     /// <summary>The route used when <see cref="VoiceSttHarnessConfig.RequestPath"/> is unset.</summary>
-    public const string DefaultRequestPath = "/inference";
+    public const string DefaultRequestPath = "/asr";
 
     /// <inheritdoc/>
     public async Task<string?> Transcribe(byte[] audio, string contentType, CancellationToken cancellationToken = default)
     {
         var config = options.Value;
-        var requestUri = new Uri(config.ResolveRequestUri(DefaultRequestPath));
+        //encode=false skips the server-side ffmpeg pass; the harness has already produced the WAV it wants.
+        var encode = contentType != FfmpegAudioTranscoder.OutputContentType;
+        var requestUri = new Uri(
+            $"{config.ResolveRequestUri(DefaultRequestPath)}" +
+            $"?task=transcribe&language={Uri.EscapeDataString(config.Language)}" +
+            $"&encode={(encode ? "true" : "false")}&output=json");
 
         using var content = new MultipartFormDataContent();
         var file = new ByteArrayContent(audio);
         if (MediaTypeHeaderValue.TryParse(contentType, out var mediaType))
             file.Headers.ContentType = mediaType;
-        content.Add(file, "file", AudioMediaType.ToPartFileName(contentType));
-        content.Add(new StringContent(config.Language), "language");
-        content.Add(new StringContent("json"), "response_format");
+        content.Add(file, "audio_file", AudioMediaType.ToPartFileName(contentType));
 
         var client = httpClientFactory.CreateClient(VoiceSttHarnessConfig.HttpClientName);
         using var response = await client.PostAsync(requestUri, content, cancellationToken);
@@ -47,5 +50,5 @@ public sealed partial class WhisperCppVoiceTranscriber(
 
     [LoggerMessage(LogLevel.Error, "{ClassName} transcription endpoint returned StatusCode={StatusCode}")]
     private static partial void LogTranscriptionRejected(ILogger logger, int statusCode,
-        string className = nameof(WhisperCppVoiceTranscriber));
+        string className = nameof(WhisperAsrVoiceTranscriber));
 }

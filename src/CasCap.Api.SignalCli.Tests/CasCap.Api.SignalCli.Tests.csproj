@@ -7,6 +7,9 @@
     <UserSecretsId>890bd946-ed0b-4c13-abdf-070bc0b3fabc</UserSecretsId>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- xunit.v3 4.0.1 no longer emits the Microsoft.Testing.Platform entry point implicitly,
+         and global.json selects that runner for `dotnet test`. -->
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
   </PropertyGroup>
 
   <ItemGroup>

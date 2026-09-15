@@ -32,23 +32,48 @@ implemented in a consuming application, so it is deliberately manual and disable
 
 The harness never sends a Signal reply.
 
+### Modes
+
+| Mode | Trigger | What it proves |
+| --- | --- | --- |
+| File | `VoiceSttHarness:AudioFilePath` is set | ffmpeg conversion and the speech-to-text contract, against a local recording. signal-cli is never contacted, so no second Signal registration is needed. The host processes the file once and exits. |
+| Signal | `VoiceSttHarness:AudioFilePath` is unset and `Enabled` is `true` | The complete path, including attachment retrieval and deletion. Needs a registered or linked account. |
+
+Start with file mode. It removes every Signal variable from the first run, and a failure there is unambiguously an
+ffmpeg or speech-to-text problem.
+
+> Registering the same phone number with a second signal-cli instance breaks the first one. Link the container as an
+> additional device instead of registering, or point `CasCap:SignalCliConfig:BaseAddress` at an existing instance.
+
+### Providers
+
+`VoiceSttHarness:Provider` selects the wire contract. Both return a top-level JSON `text` property.
+
+| Provider | Server | Request |
+| --- | --- | --- |
+| `WhisperAsr` (default) | [openai-whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice) | multipart `POST /asr?task=transcribe&language=…&encode=…&output=json`, part `audio_file` |
+| `WhisperCpp` | [whisper.cpp](https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md) server | multipart `POST /inference`, parts `file`, `language`, `response_format=json` |
+
+When `TranscodeToWav` is enabled the harness has already produced 16 kHz mono PCM WAV, so the `WhisperAsr` request sets
+`encode=false` and skips the server-side ffmpeg pass.
+
+`RequestPath` overrides the provider's default route; leave it unset to use `/asr` or `/inference` respectively.
+
 ### Prerequisites
 
-* A registered or linked signal-cli account, as described above
-* A speech-to-text server that accepts multipart `POST {Endpoint}{RequestPath}` with `file`, `language` and
-  `response_format=json` parts and returns a JSON `text` property; stock
-  [whisper.cpp](https://github.com/ggml-org/whisper.cpp/blob/master/examples/server/README.md) serves this at
-  `/inference`. Run it on a port other than the signal-cli `8080`, for example `8081`.
-* `ffmpeg` on `PATH`, or an absolute path in `VoiceSttHarness:FfmpegPath`, when `TranscodeToWav` is enabled. A stock
-  whisper.cpp server accepts WAV only unless it was started with `--convert`, and Android voice notes are AAC.
-* A device running Signal that can send a voice note to the registered account
+* A speech-to-text server reachable from wherever the sample runs
+* `ffmpeg` on `PATH`, or an absolute path in `VoiceSttHarness:FfmpegPath`, when `TranscodeToWav` is enabled. The
+  repository's own image installs it, so running the harness in a container removes this prerequisite entirely.
+* A local audio recording for file mode, or a registered/linked signal-cli account and a device that can send a voice
+  note for Signal mode
 
 ### Privacy Behaviour
 
 Audio stays in memory and is piped to ffmpeg through standard input and output, so nothing is written to disk. The
 harness never logs, writes or echoes phone numbers, sender or recipient identity, group information, attachment
-filenames, message text, transcript text, or audio bytes. Never store a spoken phrase, a recording, or a transcript
-anywhere beneath this repository.
+filenames, message text, transcript text, or audio bytes. The configured `AudioFilePath` is not logged either, because a
+local fixture is commonly named after the phrase it contains. Never commit a spoken phrase, a recording, or a
+transcript; `testdata/`, `.secrets/` and `secrets.json` are gitignored for exactly that reason.
 
 ### Harness Configuration
 
@@ -57,11 +82,13 @@ harness ships disabled.
 
 | Key | Default | Purpose |
 | --- | --- | --- |
-| `Enabled` | `false` | Turns the harness on; when `false` the worker only logs envelope arrival |
+| `Enabled` | `false` | Turns Signal mode on; when `false` the worker only logs envelope arrival |
+| `Provider` | `WhisperAsr` | Selects the speech-to-text wire contract |
+| `AudioFilePath` | `null` | Switches to file mode and transcribes this recording once, without contacting signal-cli |
 | `Endpoint` | `http://localhost:8081` | Base address of the speech-to-text server |
-| `RequestPath` | `/inference` | Path appended to `Endpoint` |
-| `Language` | `en` | Language hint sent as the `language` part |
-| `MaxAttachmentBytes` | `26214400` | Largest declared attachment size that will be downloaded |
+| `RequestPath` | `null` | Overrides the provider's default route (`/asr` or `/inference`) |
+| `Language` | `en` | Language hint sent with the request |
+| `MaxAttachmentBytes` | `26214400` | Largest audio payload that will be processed |
 | `TimeoutMs` | `120000` | Per-request timeout for the transcription call |
 | `FfmpegPath` | `ffmpeg` | ffmpeg executable name or absolute path |
 | `TranscodeToWav` | `true` | Converts the audio to 16 kHz mono signed 16-bit PCM WAV before transcription |
@@ -72,11 +99,13 @@ harness ships disabled.
 Supply local values through User Secrets so nothing sensitive is committed:
 
 ```powershell
-dotnet user-secrets --project samples/GenericHost set "VoiceSttHarness:Enabled" "true"
 dotnet user-secrets --project samples/GenericHost set "VoiceSttHarness:Endpoint" "http://localhost:8081"
-dotnet user-secrets --project samples/GenericHost set "VoiceSttHarness:StopAfterFirstAccepted" "true"
+dotnet user-secrets --project samples/GenericHost set "VoiceSttHarness:AudioFilePath" "testdata/sample.aac"
 dotnet user-secrets --project samples/GenericHost set "VoiceSttHarness:ExpectedTranscriptSha256" "<locally-computed-sha256>"
 ```
+
+The sample calls `AddUserSecrets` unconditionally rather than relying on the Development-only default, so the same
+`secrets.json` is read when it runs from a container under a different environment name.
 
 Compute the expected hash locally from the phrase you intend to speak, after applying the same normalization the
 harness uses — trim, collapse internal whitespace runs to a single space, then lowercase with the invariant culture:
@@ -90,13 +119,30 @@ $normalized = 'the agreed synthetic phrase'
 
 ### Manual Acceptance Procedure
 
-1. Start the signal-cli container and the speech-to-text server, then confirm the server transcribes a locally
-   generated synthetic WAV before involving Signal.
-2. Configure the User Secrets above and start the sample with `dotnet run --project samples/GenericHost`.
-3. Wait for the `voice acceptance harness enabled=True` line.
-4. From the Signal app, send exactly one voice note to the registered account.
-5. Read the safe evidence fields below from the console output.
-6. Confirm the attachment is gone by requesting it again through the wrapper; it should return `404`.
+1. Confirm the speech-to-text server transcribes a locally generated synthetic WAV before involving this sample.
+2. Configure the User Secrets above, including `AudioFilePath`, and run the sample.
+3. Read the safe evidence fields below from the console output and confirm `expectedTranscriptMatched=True`.
+4. Clear `AudioFilePath`, set `Enabled` to `true`, restart, and send one voice note from the Signal app.
+5. Confirm the attachment is gone by requesting it again through the wrapper; it should return `404`.
+
+### Running in a Container
+
+The repository image carries ffmpeg, so the harness runs without installing anything on the host:
+
+```powershell
+docker compose --profile harness up --build harness
+```
+
+The compose service mounts `testdata/` read-only at `/testdata` and a secrets directory at the container's user-secrets
+path, so `AudioFilePath` should be set to `/testdata/<file>`. By default the secrets directory is `./.secrets`; set
+`USER_SECRETS_DIR` to share the real store instead:
+
+| OS | `USER_SECRETS_DIR` |
+| --- | --- |
+| Windows | `$env:APPDATA/Microsoft/UserSecrets/ac254609-b6b7-4a90-958d-81ab66df3c1d` |
+| Linux, macOS | `$HOME/.microsoft/usersecrets/ac254609-b6b7-4a90-958d-81ab66df3c1d` |
+
+See the [root README](../../README.md#container-image) for the multi-architecture build scripts.
 
 ### Safe Evidence Fields
 
@@ -104,10 +150,11 @@ The harness emits only non-content evidence:
 
 | Field | Meaning |
 | --- | --- |
-| `contentType` | Declared MIME type of the selected attachment |
+| `provider` | The selected speech-to-text wire contract |
+| `contentType` | Declared MIME type of the selected attachment, or the type inferred from the file extension |
 | `hasFilename` | Whether a filename was present; the filename itself is never logged |
 | `declaredBytes` / `downloadedBytes` | Size claimed by the sender and size actually retrieved |
-| `sha256` | SHA-256 of the downloaded audio |
+| `sha256` | SHA-256 of the source audio |
 | `sourceBytes` / `convertedBytes` | Byte counts either side of the optional ffmpeg conversion |
 | `elapsedMs` | Transcription round-trip duration |
 | `transcriptChars` / `transcriptSha256` | Length and hash of the normalized transcript, never its text |
@@ -130,6 +177,7 @@ sample-only `VoiceSttHarness` section is documented above.
 | Package | Purpose |
 | --- | --- |
 | `Microsoft.Extensions.Hosting` | Configuration, dependency injection, logging, and worker lifetime |
+| `Microsoft.Extensions.Configuration.UserSecrets` | Reads `secrets.json` outside the Development environment |
 | `Microsoft.Extensions.Http` | `IHttpClientFactory` registration for the speech-to-text client |
 
 ### Project references

@@ -15,5 +15,26 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  #The GenericHost sample, carrying the ffmpeg the voice speech-to-text harness needs.
+  #Behind a profile so `docker compose up` keeps starting signal-cli alone:
+  #  docker compose --profile harness up --build harness
+  harness:
+    profiles: [ harness ]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/f2calv/cascap.api.signalcli:latest-dev
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      #Only contacted when VoiceSttHarness:AudioFilePath is unset, i.e. not in file mode.
+      CasCap__SignalCliConfig__BaseAddress: http://signalcli:8080
+    volumes:
+      #Endpoint, account and expected transcript hash live here, never in a tracked file.
+      #Point USER_SECRETS_DIR at the real store to share it with `dotnet user-secrets`:
+      #  Windows $APPDATA/Microsoft/UserSecrets/<id>, Linux $HOME/.microsoft/usersecrets/<id>
+      - ${USER_SECRETS_DIR:-./.secrets}:/home/app/.microsoft/usersecrets/ac254609-b6b7-4a90-958d-81ab66df3c1d:ro
+      - ./testdata:/testdata:ro
+    restart: "no"
+
 volumes:
   signalcli_data:
