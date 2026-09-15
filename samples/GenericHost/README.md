@@ -119,19 +119,27 @@ $normalized = 'the agreed synthetic phrase'
 
 ### Manual Acceptance Procedure
 
-1. Confirm the speech-to-text server transcribes a locally generated synthetic WAV before involving this sample.
+1. Start the speech-to-text endpoint and confirm it transcribes a locally generated synthetic WAV.
 2. Configure the User Secrets above, including `AudioFilePath`, and run the sample.
 3. Read the safe evidence fields below from the console output and confirm `expectedTranscriptMatched=True`.
 4. Clear `AudioFilePath`, set `Enabled` to `true`, restart, and send one voice note from the Signal app.
 5. Confirm the attachment is gone by requesting it again through the wrapper; it should return `404`.
 
+On the first run leave `ExpectedTranscriptSha256` unset, because the harness never prints the transcript. Hash the
+phrase you expect, compare it against the reported `transcriptSha256`, then configure it to make the match a gate.
+
 ### Running in a Container
 
-The repository image carries ffmpeg, so the harness runs without installing anything on the host:
+The repository image carries ffmpeg, and the `harness` compose profile also starts a local whisper-asr sidecar, so the
+whole path runs without installing anything on the host:
 
 ```powershell
-docker compose --profile harness up --build harness
+docker compose --profile harness up --detach whisper-asr   # first start downloads the model
+docker compose --profile harness run --rm harness
 ```
+
+The sidecar runs the same image as the deployed cluster service, so the wire contract proven locally is the one that
+runs in production. It defaults to the `base` model; `small` and `medium` are more accurate and much slower on CPU.
 
 The compose service mounts `testdata/` read-only at `/testdata` and a secrets directory at the container's user-secrets
 path, so `AudioFilePath` should be set to `/testdata/<file>`. By default the secrets directory is `./.secrets`; set
@@ -139,8 +147,14 @@ path, so `AudioFilePath` should be set to `/testdata/<file>`. By default the sec
 
 | OS | `USER_SECRETS_DIR` |
 | --- | --- |
-| Windows | `$env:APPDATA/Microsoft/UserSecrets/ac254609-b6b7-4a90-958d-81ab66df3c1d` |
-| Linux, macOS | `$HOME/.microsoft/usersecrets/ac254609-b6b7-4a90-958d-81ab66df3c1d` |
+| Windows | `$env:APPDATA/Microsoft/UserSecrets/890bd946-ed0b-4c13-abdf-070bc0b3fabc` |
+| Linux, macOS | `$HOME/.microsoft/usersecrets/890bd946-ed0b-4c13-abdf-070bc0b3fabc` |
+
+That identifier is declared once in [`Directory.Build.props`](../../Directory.Build.props) and shared with the test
+project, so a signal-cli account or speech-to-text endpoint is configured once and serves both.
+
+Environment variables still take precedence over user secrets, so a `secrets.json` pointing at a cluster endpoint
+resolves to the compose sidecar when run through compose.
 
 See the [root README](../../README.md#container-image) for the multi-architecture build scripts.
 

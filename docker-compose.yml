@@ -15,6 +15,21 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  #A local speech-to-text endpoint for the harness. The deployed cluster runs the same image, so
+  #the wire contract proven here is the one that runs in production.
+  whisper-asr:
+    profiles: [ harness ]
+    image: onerahmet/openai-whisper-asr-webservice:v1.9.1
+    environment:
+      #base keeps the first pull small; small/medium are more accurate and much slower on CPU.
+      ASR_MODEL: base
+      ASR_ENGINE: openai_whisper
+    ports:
+      - 9000:9000
+    volumes:
+      - whisper_cache:/root/.cache
+    restart: unless-stopped
+
   #The GenericHost sample, carrying the ffmpeg the voice speech-to-text harness needs.
   #Behind a profile so `docker compose up` keeps starting signal-cli alone:
   #  docker compose --profile harness up --build harness
@@ -24,17 +39,24 @@ services:
       context: .
       dockerfile: Dockerfile
     image: ghcr.io/f2calv/cascap.api.signalcli:latest-dev
+    depends_on:
+      - whisper-asr
     environment:
       DOTNET_ENVIRONMENT: Development
       #Only contacted when VoiceSttHarness:AudioFilePath is unset, i.e. not in file mode.
       CasCap__SignalCliConfig__BaseAddress: http://signalcli:8080
+      #Environment beats user secrets, so a secrets.json pointing at a cluster endpoint still
+      #resolves to the sidecar when run through compose.
+      VoiceSttHarness__Provider: WhisperAsr
+      VoiceSttHarness__Endpoint: http://whisper-asr:9000
     volumes:
       #Endpoint, account and expected transcript hash live here, never in a tracked file.
       #Point USER_SECRETS_DIR at the real store to share it with `dotnet user-secrets`:
       #  Windows $APPDATA/Microsoft/UserSecrets/<id>, Linux $HOME/.microsoft/usersecrets/<id>
-      - ${USER_SECRETS_DIR:-./.secrets}:/home/app/.microsoft/usersecrets/ac254609-b6b7-4a90-958d-81ab66df3c1d:ro
+      - ${USER_SECRETS_DIR:-./.secrets}:/home/app/.microsoft/usersecrets/890bd946-ed0b-4c13-abdf-070bc0b3fabc:ro
       - ./testdata:/testdata:ro
     restart: "no"
 
 volumes:
   signalcli_data:
+  whisper_cache:
