@@ -75,6 +75,7 @@ jobs:
       registry: ghcr.io/${{ github.repository_owner }}
       tag: ${{ needs.versioning.outputs.version }}
       dockerfile: Dockerfile
+      platform: linux/amd64,linux/arm64
       args: --build-arg PROJECT=samples/GenericHost/GenericHost.csproj
       push-image: ${{ github.actor != 'copilot[bot]' }}
 
