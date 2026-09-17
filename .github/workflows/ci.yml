@@ -23,7 +23,6 @@ permissions: {}
 
 jobs:
   lint:
-    if: github.ref != format('refs/heads/{0}', github.event.repository.default_branch)
     permissions:
       contents: read #checkout
     uses: f2calv/gha-workflows/.github/workflows/lint.yml@v1
@@ -76,7 +75,7 @@ jobs:
       push-image: ${{ github.actor != 'copilot[bot]' }}
 
   release:
-    needs: [versioning, build, containerize]
+    needs: [lint, versioning, build, containerize]
     if: needs.versioning.outputs.release-exists == 'false'
       && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     uses: f2calv/gha-workflows/.github/workflows/gha-release-versioning.yml@v1
