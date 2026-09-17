@@ -715,8 +715,12 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(_config.ReceivePollIntervalMs));
-        while (!cancellationToken.IsCancellationRequested)
+        while (true)
         {
+            //Checked rather than used as the loop condition, so cancellation always surfaces as an
+            //exception; testing it in the condition exits silently when it lands between iterations.
+            cancellationToken.ThrowIfCancellationRequested();
+
             var messages = await ReceiveMessages(_config.PhoneNumber, cancellationToken).ConfigureAwait(false);
             if (messages is not null)
                 foreach (var message in messages)
