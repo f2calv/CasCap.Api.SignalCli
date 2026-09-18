@@ -78,9 +78,9 @@ EOF
 # ------------------------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
-COPY --link --from=build /app/publish .
 
 # -- Runtime dependencies ------------------------------------------------------
+# Installed before the application layers so editing source never re-runs this install.
 # ffmpeg is a hard dependency, not temporary debug tooling: Signal voice notes arrive as AAC
 # and a stock speech-to-text server expects 16 kHz mono signed 16-bit PCM WAV.
 RUN <<EOF
@@ -88,7 +88,10 @@ set -eux
 apt-get update
 apt-get install -y --no-install-recommends ffmpeg
 rm -rf /var/lib/apt/lists/*
+ffmpeg -version
 EOF
+
+COPY --link --from=build /app/publish .
 
 # -- Provenance ----------------------------------------------------------------
 # Supplied by the CI workflow (.github/workflows/ci.yml) or by build.ps1/build.sh.
