@@ -1,0 +1,11 @@
+{
+    "recommendations": [
+        "DavidAnson.vscode-markdownlint",
+        "ms-dotnettools.csdevkit",
+        "ms-vscode.powershell",
+        "redhat.vscode-yaml",
+        "github.vscode-github-actions",
+        "ms-azuretools.vscode-containers",
+        "humao.rest-client"
+    ]
+}
