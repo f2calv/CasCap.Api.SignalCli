@@ -5,6 +5,7 @@
 @phoneNumber = {{$dotenv SIGNAL_CLI_PHONE_NUMBER}}
 
 ### Send a message to self (mirrors SendMessage_ToSelf_ReturnsTimestamp)
+# @note
 POST {{baseUrl}}/v2/send
 Content-Type: application/json
 Authorization: Basic {{$dotenv SIGNAL_CLI_AUTH}}

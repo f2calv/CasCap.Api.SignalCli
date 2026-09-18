@@ -437,3 +437,4 @@ testdata/
 .secrets/
 secrets.json
 .env
+requests/.env
