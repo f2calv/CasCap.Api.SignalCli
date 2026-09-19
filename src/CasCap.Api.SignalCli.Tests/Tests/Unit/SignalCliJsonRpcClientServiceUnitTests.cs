@@ -20,6 +20,21 @@ public class SignalCliJsonRpcClientServiceUnitTests(ITestOutputHelper output)
         Assert.Equal(expectedUri, uri.ToString());
     }
 
+    [Theory]
+    [InlineData("http://localhost:8080", "+10000000000")]
+    [InlineData("https://signal.example.com", "+441234567890")]
+    public void MaskPhoneNumberInUri_RemovesThePercentEncodedNumber(string baseAddress, string phoneNumber)
+    {
+        //The URI percent-encodes '+' as %2B, so masking only the raw form silently leaves the number behind.
+        var uri = SignalCliJsonRpcClientService.BuildWebSocketUri(baseAddress, phoneNumber);
+        var masked = SignalCliJsonRpcClientService.MaskPhoneNumberInUri(uri, phoneNumber);
+
+        output.WriteLine($"masked => {masked}");
+        Assert.DoesNotContain(phoneNumber, masked, StringComparison.Ordinal);
+        Assert.DoesNotContain(Uri.EscapeDataString(phoneNumber), masked, StringComparison.Ordinal);
+        Assert.DoesNotContain(phoneNumber.TrimStart('+'), masked, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void SignalCliTransport_HasExpectedMembers()
     {
@@ -65,6 +80,51 @@ public class SignalCliJsonRpcClientServiceUnitTests(ITestOutputHelper output)
         Assert.True(((IReceivedNotification)notification.Params).HasContent);
         Assert.Equal("Hello from group", ((IReceivedNotification)notification.Params).Message);
         Assert.Equal("abc123==", ((IReceivedNotification)notification.Params).GroupId);
+    }
+
+    [Fact]
+    public void JsonRpcNotification_WithAudioAttachment_DeserializesAttachmentMetadata()
+    {
+        //A redacted, attachment-only voice-note shape: synthetic identifiers, no message body, no filename.
+        const string json = """
+            {
+              "jsonrpc": "2.0",
+              "method": "receive",
+              "params": {
+                "envelope": {
+                  "source": "+10000000000",
+                  "timestamp": 1712153610000,
+                  "dataMessage": {
+                    "timestamp": 1712153610000,
+                    "attachments": [
+                      {
+                        "contentType": "audio/aac",
+                        "id": "synthetic-attachment-id",
+                        "size": 12345
+                      }
+                    ]
+                  }
+                },
+                "account": "+10000000000"
+              }
+            }
+            """;
+
+        var notification = json.FromJson<SignalCliJsonRpcNotification>();
+
+        Assert.NotNull(notification);
+        Assert.NotNull(notification.Params);
+        var dataMessage = notification.Params.Envelope.DataMessage;
+        Assert.NotNull(dataMessage);
+        Assert.Null(dataMessage.Message);
+        Assert.NotNull(dataMessage.Attachments);
+        var attachment = Assert.Single(dataMessage.Attachments);
+        Assert.Equal("synthetic-attachment-id", attachment.Id);
+        Assert.Equal("audio/aac", attachment.ContentType);
+        Assert.Null(attachment.Filename);
+        Assert.Equal(12345L, attachment.Size);
+        output.WriteLine(
+            $"contentType={attachment.ContentType}, hasFilename={attachment.Filename is not null}, size={attachment.Size}");
     }
 
     [Fact]

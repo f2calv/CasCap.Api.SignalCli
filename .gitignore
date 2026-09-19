@@ -427,3 +427,14 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# HVE / Copilot runtime artefacts
+.copilot-tracking/
+
+# Local voice-harness inputs. Recordings, transcripts, and the endpoints and hashes that
+# describe them are never committed - see samples/GenericHost/README.md.
+testdata/
+.secrets/
+secrets.json
+.env
+requests/.env

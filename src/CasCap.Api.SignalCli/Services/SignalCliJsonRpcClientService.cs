@@ -232,7 +232,7 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
     {
         var wsUri = BuildWebSocketUri(_config.BaseAddress, _config.PhoneNumber);
         _logger.LogInformation("{ClassName} connecting to WebSocket at {Uri}", nameof(SignalCliJsonRpcClientService),
-            wsUri.ToString().Replace(_config.PhoneNumber, _config.PhoneNumber.MaskPhoneNumber()));
+            MaskPhoneNumberInUri(wsUri, _config.PhoneNumber));
 
         var ws = new ClientWebSocket();
         _configureWebSocket?.Invoke(ws);
@@ -496,6 +496,22 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             Path = $"v1/receive/{Uri.EscapeDataString(phoneNumber)}"
         };
         return builder.Uri;
+    }
+
+    /// <summary>Renders <paramref name="uri"/> with the account number masked.</summary>
+    /// <remarks>
+    /// The number is percent-encoded inside the path, so the escaped form must be replaced first;
+    /// masking only the raw form silently leaves the number in the log.
+    /// </remarks>
+    internal static string MaskPhoneNumberInUri(Uri uri, string phoneNumber)
+    {
+        if (string.IsNullOrEmpty(phoneNumber))
+            return uri.ToString();
+
+        var masked = phoneNumber.MaskPhoneNumber();
+        return uri.ToString()
+            .Replace(Uri.EscapeDataString(phoneNumber), masked, StringComparison.Ordinal)
+            .Replace(phoneNumber, masked, StringComparison.Ordinal);
     }
 
     #endregion

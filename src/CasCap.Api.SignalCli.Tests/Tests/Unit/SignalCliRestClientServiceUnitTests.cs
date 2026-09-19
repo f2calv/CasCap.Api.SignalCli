@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace CasCap.Tests.Unit;
 
@@ -94,6 +95,29 @@ public class SignalCliRestClientServiceUnitTests(ITestOutputHelper output)
         var call = Assert.Single(handler.Calls);
         Assert.Contains("numbers=%2B10000000001", call.PathAndQuery);
         Assert.Contains("numbers=%2B10000000002", call.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task GetAttachment_ReturnsArbitraryBinaryContentUnchanged()
+    {
+        //Deliberately invalid UTF-8 so a string round-trip anywhere in the pipeline would corrupt the payload.
+        byte[] payload = [0x00, 0xFF, 0xFE, 0x80, 0x7F, 0xC3, 0x28, 0x1A, 0x00, 0xED, 0xA0, 0x80];
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(payload)
+            {
+                Headers = { ContentType = new MediaTypeHeaderValue("application/octet-stream") }
+            }
+        });
+        var svc = CreateService(handler);
+
+        var bytes = await svc.GetAttachment("synthetic+attachment+id", TestContext.Current.CancellationToken);
+
+        var call = Assert.Single(handler.Calls);
+        Assert.Equal(HttpMethod.Get, call.Method);
+        Assert.Equal("/v1/attachments/synthetic%2Battachment%2Bid", call.PathAndQuery);
+        Assert.Equal(payload, bytes);
+        output.WriteLine($"Downloaded {bytes!.Length} byte(s) unchanged from a {payload.Length}-byte binary response");
     }
 
     [Fact]
