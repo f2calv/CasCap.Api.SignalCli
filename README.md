@@ -7,6 +7,7 @@ JSON-RPC WebSocket message reception.
 [CasCap.Api.SignalCli-url]: https://nuget.org/packages/CasCap.Api.SignalCli
 
 ![CI](https://github.com/f2calv/CasCap.Api.SignalCli/actions/workflows/ci.yml/badge.svg)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=f2calv_CasCap.Api.SignalCli&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=f2calv_CasCap.Api.SignalCli)
 [![NuGet][CasCap.Api.SignalCli-badge]][CasCap.Api.SignalCli-url]
 
 ## Packages
