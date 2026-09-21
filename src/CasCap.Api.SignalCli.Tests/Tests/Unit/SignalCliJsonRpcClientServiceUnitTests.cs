@@ -10,22 +10,26 @@ namespace CasCap.Tests.Unit;
 public class SignalCliJsonRpcClientServiceUnitTests(ITestOutputHelper output)
 {
     [Theory]
-    [InlineData("http://localhost:8080", "+10000000000", "ws://localhost:8080/v1/receive/%2B10000000000")]
-    [InlineData("https://signal.example.com", "+10000000001", "wss://signal.example.com/v1/receive/%2B10000000001")]
-    [InlineData("http://signalcli.svc.local:8080", "+1234", "ws://signalcli.svc.local:8080/v1/receive/%2B1234")]
-    public void BuildWebSocketUri_ConstructsCorrectUri(string baseAddress, string phoneNumber, string expectedUri)
+    [InlineData(false, "localhost", "+10000000000", "ws://localhost:8080/v1/receive/%2B10000000000")]
+    [InlineData(true, "signal.example.com", "+10000000001", "wss://signal.example.com:8080/v1/receive/%2B10000000001")]
+    [InlineData(false, "signalcli.svc.local", "+1234", "ws://signalcli.svc.local:8080/v1/receive/%2B1234")]
+    public void BuildWebSocketUri_ConstructsCorrectUri(bool secure, string host, string phoneNumber, string expectedUri)
     {
+        var scheme = secure ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+        var baseAddress = new UriBuilder(scheme, host, 8080).Uri.GetLeftPart(UriPartial.Authority);
         var uri = SignalCliJsonRpcClientService.BuildWebSocketUri(baseAddress, phoneNumber);
         output.WriteLine($"Input=({baseAddress}, {phoneNumber}) => {uri}");
         Assert.Equal(expectedUri, uri.ToString());
     }
 
     [Theory]
-    [InlineData("http://localhost:8080", "+10000000000")]
-    [InlineData("https://signal.example.com", "+441234567890")]
-    public void MaskPhoneNumberInUri_RemovesThePercentEncodedNumber(string baseAddress, string phoneNumber)
+    [InlineData(false, "localhost", "+10000000000")]
+    [InlineData(true, "signal.example.com", "+10000000001")]
+    public void MaskPhoneNumberInUri_RemovesThePercentEncodedNumber(bool secure, string host, string phoneNumber)
     {
         //The URI percent-encodes '+' as %2B, so masking only the raw form silently leaves the number behind.
+        var scheme = secure ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+        var baseAddress = new UriBuilder(scheme, host, 8080).Uri.GetLeftPart(UriPartial.Authority);
         var uri = SignalCliJsonRpcClientService.BuildWebSocketUri(baseAddress, phoneNumber);
         var masked = SignalCliJsonRpcClientService.MaskPhoneNumberInUri(uri, phoneNumber);
 
