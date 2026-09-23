@@ -5,6 +5,8 @@
     <LangVersion>14.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -33,10 +35,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- IDE1006 - suppress Roslyn naming convention messages -->
-    <!-- IDE0042 - variable declaration can be deconstructed -->
     <!-- NETSDK1233 - targeting .NET 10.0 in older Visual Studio versions is not supported -->
-    <NoWarn>IDE1006;IDE0042;NETSDK1233</NoWarn>
+    <NoWarn>NETSDK1233</NoWarn>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
