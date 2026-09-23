@@ -54,6 +54,12 @@ public class SignalCliJsonRpcClientServiceTests(ITestOutputHelper output) : Test
 
         var groups = await notifier.ListGroupsAsync(_config.PhoneNumber, TestContext.Current.CancellationToken);
         Assert.NotNull(groups);
+        Assert.All(groups.OfType<SignalGroup>(), group =>
+        {
+            Assert.True(group.Matches(group.Id));
+            if (group.InternalId is not null)
+                Assert.True(group.Matches(group.InternalId));
+        });
         _output.WriteLine($"Groups={groups.Length}");
     }
 
