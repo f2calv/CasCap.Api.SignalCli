@@ -60,6 +60,22 @@ public class SignalCliRegistrationUnitTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Configuration_BindsHealthCheckExpectedHttpStatusCodes()
+    {
+        // Regression for #4: inheriting the interface default left no concrete property for the
+        // configuration binder to populate.
+        await using var sp = BuildProvider(SignalCliTransport.Normal, new Dictionary<string, string?>
+        {
+            [Key($"{nameof(SignalCliConfig.HealthCheckExpectedHttpStatusCodes)}:0")] = "201",
+            [Key($"{nameof(SignalCliConfig.HealthCheckExpectedHttpStatusCodes)}:1")] = "202",
+        });
+
+        var config = sp.GetRequiredService<IOptions<SignalCliConfig>>().Value;
+
+        Assert.Equal([200, 204, 201, 202], config.HealthCheckExpectedHttpStatusCodes);
+    }
+
+    [Fact]
     public async Task HealthClient_DoesNotRetryTransientFailures()
     {
         // Regression for #3: an orchestrator already repeats readiness probes, so one check must

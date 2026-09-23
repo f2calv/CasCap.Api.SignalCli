@@ -36,6 +36,14 @@ public sealed record SignalCliConfig : IAppConfig, IHealthCheckConfig
     [Required]
     public string HealthCheckUri { get; init; } = "v1/health";
 
+    /// <summary>HTTP status codes that indicate a healthy signal-cli endpoint.</summary>
+    /// <remarks>
+    /// Defaults to <c>200</c> and <c>204</c>; the wrapper's <c>v1/health</c> endpoint returns
+    /// <c>204 No Content</c>. Used by <see cref="CasCap.HealthChecks.SignalCliConnectionHealthCheck"/>.
+    /// </remarks>
+    [Required]
+    public IReadOnlyList<int> HealthCheckExpectedHttpStatusCodes { get; init; } = [200, 204];
+
     /// <summary>
     /// The Kubernetes probe type for the health check. Defaults to <see cref="KubernetesProbeTypes.Readiness"/>.
     /// </summary>

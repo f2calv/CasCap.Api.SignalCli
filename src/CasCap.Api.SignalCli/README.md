@@ -187,6 +187,7 @@ Registered via `IServiceCollection.AddSignalCli()`. Configuration section: `CasC
 | `TransportMode` | `SignalCliTransport` | `JsonRpc` | — | Transport mode: `Normal`, `Native` (HTTP polling) or `JsonRpc`, `JsonRpcNative` (WebSocket) |
 | `BaseAddress` | `string` | — | ✓ | Base URL of the signal-cli REST API (e.g. `http://localhost:8080`) |
 | `HealthCheckUri` | `string` | `"v1/health"` | — | Path used to verify API connectivity |
+| `HealthCheckExpectedHttpStatusCodes` | `IReadOnlyList<int>` | `[200, 204]` | — | Status codes accepted from the health endpoint |
 | `HealthCheck` | `KubernetesProbeTypes` | `Readiness` | — | Kubernetes probe type for the health check tag |
 | `PhoneNumber` | `string` | — | ✓ | Registered Signal sender number (e.g. `"+49151..."`) |
 | `PhoneNumberDebug` | `string?` | `null` | — | Optional recipient number for debug/diagnostic messages ("Note to Self" feed) |
@@ -231,6 +232,7 @@ If `Username` and `Password` are left unset, the library falls back to `CasCap:A
       "TransportMode": "JsonRpc",
       "BaseAddress": "http://signalcli.monitoring.svc.cluster.local",
       "HealthCheckUri": "v1/about",
+    "HealthCheckExpectedHttpStatusCodes": [200, 204],
       "HealthCheck": "Readiness",
       "PhoneNumber": "+49151...",
       "PhoneNumberDebug": "+49151...",
