@@ -95,6 +95,28 @@ public class SignalCliRegistrationUnitTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task RestClient_RetriesTransientGetFailures()
+    {
+        var attempts = 0;
+        var handler = new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(++attempts == 1
+                ? HttpStatusCode.ServiceUnavailable
+                : HttpStatusCode.OK));
+        var configuration = BuildConfiguration(SignalCliTransport.Normal);
+        var services = new ServiceCollection().AddSingleton<IConfiguration>(configuration).AddXUnitLogging(output);
+        services.AddSignalCli(configuration);
+        services.AddHttpClient(nameof(SignalCliRestClientService))
+            .ConfigurePrimaryHttpMessageHandler(() => handler);
+
+        await using var sp = services.BuildServiceProvider();
+        var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SignalCliRestClientService));
+        using var response = await client.GetAsync("v1/about", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, handler.Calls.Count);
+    }
+
+    [Fact]
     public void BasicAuth_UsesSignalCliCredentialsWhenSupplied()
     {
         using var sp = BuildProvider(SignalCliTransport.Normal, new Dictionary<string, string?>

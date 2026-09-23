@@ -27,13 +27,11 @@ public static class ServiceCollectionExtensions
 
         var config = services.AddAndGetCasCapConfiguration<SignalCliConfig>(configuration, configure);
 
-        services.AddHttpClient(nameof(SignalCliConnectionHealthCheck), (sp, client) =>
-        {
-            var opts = sp.GetRequiredService<IOptions<SignalCliConfig>>().Value;
-            client.BaseAddress = new Uri(opts.BaseAddress);
-            if (ResolveBasicAuth(sp, opts) is { } auth)
-                client.SetBasicAuth(auth.username, auth.password);
-        })
+        services.AddHttpClient(nameof(SignalCliRestClientService), ConfigureHttpClient)
+            .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
+            .AddStandardResilience(nameof(SignalCliRestClientService));
+
+        services.AddHttpClient(nameof(SignalCliConnectionHealthCheck), ConfigureHttpClient)
         .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
         .AddStandardResilience(nameof(SignalCliConnectionHealthCheck), HttpRetrySafety.Never);
 
@@ -79,6 +77,14 @@ public static class ServiceCollectionExtensions
     /// <exception cref="InvalidOperationException">
     /// Basic auth is enabled but no credentials were found in either configuration section.
     /// </exception>
+    private static void ConfigureHttpClient(IServiceProvider sp, HttpClient client)
+    {
+        var config = sp.GetRequiredService<IOptions<SignalCliConfig>>().Value;
+        client.BaseAddress = new Uri(config.BaseAddress);
+        if (ResolveBasicAuth(sp, config) is { } auth)
+            client.SetBasicAuth(auth.username, auth.password);
+    }
+
     private static (string username, string password)? ResolveBasicAuth(IServiceProvider sp, SignalCliConfig config)
     {
         if (!config.BasicAuthEnabled)

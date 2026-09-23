@@ -262,10 +262,9 @@ If `Username` and `Password` are left unset, the library falls back to `CasCap:A
 
 ## Resilience
 
-The health check and `SignalCliRestClientService` share one named `HttpClient`, so a single standard resilience pipeline covers every REST call.
-
-Health checks never retry within that pipeline. A probe is a point-in-time result, and the orchestrator
-already repeats it on its own schedule.
+`SignalCliRestClientService` uses the standard resilience pipeline for REST calls. Health checks use
+a separate named `HttpClient` with retries disabled: a probe is a point-in-time result, and the
+orchestrator already repeats it on its own schedule.
 
 Retries are limited to methods the server can safely process twice. A failed `POST` — sending a message, uploading an attachment — is **not** replayed, because the request may well have been delivered before the failure surfaced and a replay would send the message twice. Transient failures on those calls surface to the caller instead.
 

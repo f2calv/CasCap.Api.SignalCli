@@ -17,7 +17,7 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
     {
         _logger = logger;
         _config = options.Value;
-        Client = httpClientFactory.CreateClient(nameof(SignalCliConnectionHealthCheck));
+        Client = httpClientFactory.CreateClient(nameof(SignalCliRestClientService));
     }
 
     #region General
