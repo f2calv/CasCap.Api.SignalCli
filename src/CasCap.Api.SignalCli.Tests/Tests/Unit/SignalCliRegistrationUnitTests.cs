@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace CasCap.Tests.Unit;
 
 /// <summary>
@@ -55,6 +57,25 @@ public class SignalCliRegistrationUnitTests(ITestOutputHelper output)
 
         using var sp = services.BuildServiceProvider();
         Assert.Single(sp.GetServices<ISignalCliClient>());
+    }
+
+    [Fact]
+    public async Task HealthClient_DoesNotRetryTransientFailures()
+    {
+        // Regression for #3: an orchestrator already repeats readiness probes, so one check must
+        // perform one request rather than applying the standard transient-failure retry policy.
+        var configuration = BuildConfiguration(SignalCliTransport.Normal);
+        var handler = StubHttpMessageHandler.RespondStatus(HttpStatusCode.ServiceUnavailable);
+        var services = new ServiceCollection().AddSingleton<IConfiguration>(configuration).AddXUnitLogging(output);
+        services.AddSignalCli(configuration);
+        services.AddHttpClient(nameof(SignalCliConnectionHealthCheck))
+            .ConfigurePrimaryHttpMessageHandler(() => handler);
+
+        await using var sp = services.BuildServiceProvider();
+        var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SignalCliConnectionHealthCheck));
+        using var response = await client.GetAsync("v1/health", TestContext.Current.CancellationToken);
+
+        Assert.Single(handler.Calls);
     }
 
     [Fact]

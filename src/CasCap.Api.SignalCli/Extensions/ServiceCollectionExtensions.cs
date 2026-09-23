@@ -35,7 +35,7 @@ public static class ServiceCollectionExtensions
                 client.SetBasicAuth(auth.username, auth.password);
         })
         .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
-        .AddStandardResilience(nameof(SignalCliConnectionHealthCheck));
+        .AddStandardResilience(nameof(SignalCliConnectionHealthCheck), HttpRetrySafety.Never);
 
         services.AddSingleton<SignalCliRestClientService>();
         services.AddSingleton<ISignalCliClient>(sp => sp.GetRequiredService<SignalCliRestClientService>());
