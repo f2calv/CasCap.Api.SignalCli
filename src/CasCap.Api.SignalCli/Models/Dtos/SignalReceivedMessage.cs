@@ -27,7 +27,8 @@ public sealed record SignalReceivedMessage : IReceivedNotification
     [JsonIgnore]
     string IReceivedNotification.Sender => Envelope.Source ?? Envelope.SourceNumber ?? "unknown";
 
-    /// <inheritdoc/>
+    /// <summary>The unprefixed <see cref="SignalGroup.InternalId"/> carried by an inbound envelope.</summary>
+    /// <remarks>Use <see cref="SignalGroup.Matches(string?)"/> to compare it with a listed group.</remarks>
     [JsonIgnore]
     string? IReceivedNotification.GroupId => Content?.GroupInfo?.GroupId;
 

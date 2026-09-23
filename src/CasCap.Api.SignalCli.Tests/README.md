@@ -8,13 +8,14 @@ Integration and unit tests for the Signal messenger library ([CasCap.Api.SignalC
 | --- | --- | --- | --- |
 | `SignalCliRestClientServiceUnitTests` | Unit | 15 | 17 |
 | `SignalCliConnectionHealthCheckUnitTests` | Unit | 1 | 1 |
+| `SignalGroupUnitTests` | Unit | 1 | 5 |
 | `SignalCliRegistrationUnitTests` | Unit | 9 | 15 |
 | `SignalCliJsonRpcClientServiceUnitTests` | Unit | 10 | 13 |
 | `SignalCliRestClientServiceTests` | Integration | 51 | 51 |
 | `SignalCliJsonRpcClientServiceTests` | Integration | 4 | 4 |
-| **Total** | | **90** | **101** |
+| **Total** | | **91** | **106** |
 
-The 46 unit test cases are the credential-free subset CI runs.
+The 51 unit test cases are the credential-free subset CI runs.
 
 ## Trait Categories
 
@@ -49,6 +50,7 @@ CasCap.Api.SignalCli.Tests/
 └── Tests/
     ├── Unit/
     │   ├── SignalCliConnectionHealthCheckUnitTests.cs
+    │   ├── SignalGroupUnitTests.cs
     │   ├── SignalCliJsonRpcClientServiceUnitTests.cs
     │   ├── SignalCliRegistrationUnitTests.cs
     │   ├── SignalCliRestClientServiceUnitTests.cs

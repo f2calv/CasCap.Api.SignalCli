@@ -178,6 +178,14 @@ Every method returns `null` or `false` on failure and logs the cause; failures a
 | `ListStickerPacks(number)` | `GET /v1/sticker-packs/{number}` | Lists installed sticker packs |
 | `AddStickerPack(number, packId, packKey)` | `POST /v1/sticker-packs/{number}` | Installs a sticker pack |
 
+## Group Identifiers
+
+Signal groups expose two opaque identifier forms. `SignalGroup.Id` is the `group.`-prefixed value
+required in `SignalMessageRequest.Recipients` when sending. `SignalGroup.InternalId` is the
+unprefixed value carried by inbound `IReceivedNotification.GroupId`; it cannot be derived by
+removing the prefix from `Id`. Use `SignalGroup.Matches(groupId)` when matching an identifier whose
+source is not known.
+
 ## Configuration
 
 Registered via `IServiceCollection.AddSignalCli()`. Configuration section: `CasCap:SignalCliConfig`.
