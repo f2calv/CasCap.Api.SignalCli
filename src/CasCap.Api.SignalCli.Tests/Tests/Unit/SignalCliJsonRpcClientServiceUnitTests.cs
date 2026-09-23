@@ -87,6 +87,50 @@ public class SignalCliJsonRpcClientServiceUnitTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void JsonRpcNotification_WithSyncSentMessage_MapsReceivedNotificationContent()
+    {
+        // Regression for #5: a linked device receives its account's own messages under
+        // syncMessage.sentMessage rather than dataMessage.
+        const string json = """
+            {
+              "jsonrpc": "2.0",
+              "method": "receive",
+              "params": {
+                "envelope": {
+                  "timestamp": 1712153610000,
+                  "syncMessage": {
+                    "sentMessage": {
+                      "message": "Hello from linked account",
+                      "timestamp": 1712153610001,
+                      "groupInfo": { "groupId": "synthetic-internal-id" },
+                      "attachments": [
+                        {
+                          "contentType": "text/plain",
+                          "id": "synthetic-attachment-id",
+                          "size": 12
+                        }
+                      ]
+                    }
+                  }
+                },
+                "account": "+10000000000"
+              }
+            }
+            """;
+
+        var notification = json.FromJson<SignalCliJsonRpcNotification>();
+
+        Assert.NotNull(notification?.Params);
+        var received = Assert.IsAssignableFrom<IReceivedNotification>(notification.Params);
+        Assert.True(received.HasContent);
+        Assert.Equal("Hello from linked account", received.Message);
+        Assert.Equal("synthetic-internal-id", received.GroupId);
+        Assert.Equal(1712153610001L, received.Timestamp);
+        Assert.NotNull(received.Attachments);
+        Assert.Single(received.Attachments);
+    }
+
+    [Fact]
     public void JsonRpcNotification_WithAudioAttachment_DeserializesAttachmentMetadata()
     {
         //A redacted, attachment-only voice-note shape: synthetic identifiers, no message body, no filename.
