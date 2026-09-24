@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using CasCap.Diagnostics;
 
 namespace CasCap.Services;
 
@@ -108,6 +109,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 try
                 {
                     _webSocket = await CreateAndConnectWebSocketAsync(cancellationToken).ConfigureAwait(false);
+                    SignalCliTelemetry.ConnectionAttempts.Add(1,
+                        new KeyValuePair<string, object?>("phase", "initial"),
+                        new KeyValuePair<string, object?>("outcome", "success"));
 
                     _logger.LogInformation("{ClassName} WebSocket connected for {PhoneNumber}",
                         nameof(SignalCliJsonRpcClientService), _config.PhoneNumber.MaskPhoneNumber());
@@ -122,6 +126,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 }
                 catch (Exception ex)
                 {
+                    SignalCliTelemetry.ConnectionAttempts.Add(1,
+                        new KeyValuePair<string, object?>("phase", "initial"),
+                        new KeyValuePair<string, object?>("outcome", "failure"));
                     attempt++;
                     if (attempt > _maxReconnectAttempts)
                     {
@@ -159,7 +166,10 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
         await ConnectAsync(cancellationToken).ConfigureAwait(false);
 
         await foreach (var message in _channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        {
+            SignalCliTelemetry.BufferedMessages.Add(-1);
             yield return message;
+        }
     }
 
     #endregion
@@ -188,7 +198,10 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
         // Drain all currently available messages.
         var messages = new List<SignalReceivedMessage>();
         while (reader.TryRead(out var msg))
+        {
+            SignalCliTelemetry.BufferedMessages.Add(-1);
             messages.Add(msg);
+        }
 
         if (messages.Count > 0)
             _logger.LogDebug("{ClassName} drained {Count} message(s) for {Account}",
@@ -268,6 +281,7 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 break;
 
             attempt++;
+            SignalCliTelemetry.Reconnects.Add(1);
             if (attempt > _maxReconnectAttempts)
             {
                 _logger.LogError("{ClassName} exceeded {MaxAttempts} reconnection attempts, giving up",
@@ -290,6 +304,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 _webSocket = null;
 
                 _webSocket = await CreateAndConnectWebSocketAsync(cancellationToken).ConfigureAwait(false);
+                SignalCliTelemetry.ConnectionAttempts.Add(1,
+                    new KeyValuePair<string, object?>("phase", "reconnect"),
+                    new KeyValuePair<string, object?>("outcome", "success"));
 
                 // Reset attempt counter on successful reconnection.
                 attempt = 0;
@@ -298,6 +315,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             }
             catch (Exception ex)
             {
+                SignalCliTelemetry.ConnectionAttempts.Add(1,
+                    new KeyValuePair<string, object?>("phase", "reconnect"),
+                    new KeyValuePair<string, object?>("outcome", "failure"));
                 _logger.LogWarning(ex, "{ClassName} reconnection attempt {Attempt} failed",
                     nameof(SignalCliJsonRpcClientService), attempt);
             }
@@ -360,6 +380,7 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 _logger.LogError(
                     "{ClassName} no inbound Signal frames for {Elapsed} (>{Timeout}) — the signal-cli receive thread may be dead (e.g. poisoned msg-cache). Aborting WebSocket to force a reconnect; if this recurs, check/clear the server-side msg-cache",
                     nameof(SignalCliJsonRpcClientService), elapsed, _receiveStalenessTimeout);
+                SignalCliTelemetry.StaleStreams.Add(1);
 
                 // Reset the stamp first so we re-alert at most once per timeout window while the
                 // condition persists, rather than on every poll.
@@ -425,12 +446,17 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 if (message is not null)
                 {
                     await _channel.Writer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
+                    SignalCliTelemetry.BufferedMessages.Add(1);
+                    SignalCliTelemetry.Frames.Add(1,
+                        new KeyValuePair<string, object?>("outcome", "message"));
                     _logger.LogDebug("{ClassName} wrote message from {Sender} to channel",
                         nameof(SignalCliJsonRpcClientService),
                         message.Envelope.Source ?? message.Envelope.SourceNumber ?? "unknown");
                 }
                 else
                 {
+                    SignalCliTelemetry.Frames.Add(1,
+                        new KeyValuePair<string, object?>("outcome", "unrecognized"));
                     stream.Position = 0;
                     var rawText = Encoding.UTF8.GetString(stream.GetBuffer(), 0, (int)stream.Length);
                     _logger.LogDebug("{ClassName} received WebSocket frame that could not be deserialized: {RawFrame}",
@@ -449,6 +475,8 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             }
             catch (JsonException ex)
             {
+                SignalCliTelemetry.Frames.Add(1,
+                    new KeyValuePair<string, object?>("outcome", "invalid_json"));
                 _logger.LogWarning(ex, "{ClassName} failed to deserialize WebSocket message",
                     nameof(SignalCliJsonRpcClientService));
             }
