@@ -48,6 +48,9 @@ numbers and Basic Auth credentials in .NET User Secrets, environment variables, 
 
 See the [core package README](src/CasCap.Api.SignalCli/README.md) for the complete API and configuration reference.
 
+The core package also emits an OpenTelemetry-compatible `CasCap.Api.SignalCli` meter and activity
+source. Exporter configuration remains the consuming host's responsibility.
+
 ## Local Sample
 
 The [Generic Host sample](samples/GenericHost) runs against the pinned signal-cli REST API in
