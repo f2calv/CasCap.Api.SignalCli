@@ -38,7 +38,7 @@ public class SignalCliConnectionHealthCheckUnitTests
 
         public string ApplicationName { get; set; } = nameof(SignalCliConnectionHealthCheckUnitTests);
 
-        public string ContentRootPath { get; set; } = Path.GetTempPath();
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
 
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }

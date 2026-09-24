@@ -120,7 +120,8 @@ public class SignalCliJsonRpcClientServiceUnitTests(ITestOutputHelper output)
 
         var notification = json.FromJson<SignalCliJsonRpcNotification>();
 
-        Assert.NotNull(notification?.Params);
+        Assert.NotNull(notification);
+        Assert.NotNull(notification.Params);
         var received = Assert.IsAssignableFrom<IReceivedNotification>(notification.Params);
         Assert.True(received.HasContent);
         Assert.Equal("Hello from linked account", received.Message);
