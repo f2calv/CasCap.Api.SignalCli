@@ -1,7 +1,7 @@
 global using CasCap.Abstractions;
 global using CasCap.Extensions;
+global using CasCap.Models.Dtos;
 global using CasCap.Samples;
-global using CasCap.Samples.Abstractions;
 global using CasCap.Services;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
