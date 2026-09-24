@@ -57,15 +57,18 @@ Calling `ConnectAsync` first is optional but surfaces connection failures at sta
 ## Observability
 
 The library emits provider-neutral diagnostics and does not choose or configure an exporter. A
-consuming host can register the `CasCap.Api.SignalCli` meter and activity source with OpenTelemetry.
+consuming host registers the stable `CasCap.Api.SignalCli` meter and activity source alongside its
+configurable application meter. The library source name is deliberately fixed so dashboards and
+instrumentation registration do not vary between hosts. Count-like instruments use the UCUM unit
+`1`.
 
-| Metric | Meaning |
-| --- | --- |
-| `signalcli.receive.buffered_messages` | Current messages buffered for consumers |
-| `signalcli.receive.connection_attempts` | Initial and reconnect attempts by bounded outcome |
-| `signalcli.receive.frames` | Received frames by decode outcome |
-| `signalcli.receive.reconnections` | Reconnection attempts |
-| `signalcli.receive.stale_streams` | Streams aborted by the staleness watchdog |
+| Metric | Unit | Meaning |
+| --- | --- | --- |
+| `signalcli.receive.buffered_messages` | `1` | Current messages buffered for consumers |
+| `signalcli.receive.connection_attempts` | `1` | Initial and reconnect attempts by bounded outcome |
+| `signalcli.receive.frames` | `1` | Received frames by decode outcome |
+| `signalcli.receive.reconnections` | `1` | Reconnection attempts |
+| `signalcli.receive.stale_streams` | `1` | Streams aborted by the staleness watchdog |
 
 The only dimensions are bounded phase/outcome values. Account numbers, endpoints, sender identities,
 and message content are never emitted as metric labels or trace attributes.

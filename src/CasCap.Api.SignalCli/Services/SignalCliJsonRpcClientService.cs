@@ -110,8 +110,8 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 {
                     _webSocket = await CreateAndConnectWebSocketAsync(cancellationToken).ConfigureAwait(false);
                     SignalCliTelemetry.ConnectionAttempts.Add(1,
-                        new KeyValuePair<string, object?>("phase", "initial"),
-                        new KeyValuePair<string, object?>("outcome", "success"));
+                        new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "initial"),
+                        new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "success"));
 
                     _logger.LogInformation("{ClassName} WebSocket connected for {PhoneNumber}",
                         nameof(SignalCliJsonRpcClientService), _config.PhoneNumber.MaskPhoneNumber());
@@ -127,8 +127,8 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 catch (Exception ex)
                 {
                     SignalCliTelemetry.ConnectionAttempts.Add(1,
-                        new KeyValuePair<string, object?>("phase", "initial"),
-                        new KeyValuePair<string, object?>("outcome", "failure"));
+                        new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "initial"),
+                        new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "failure"));
                     attempt++;
                     if (attempt > _maxReconnectAttempts)
                     {
@@ -305,8 +305,8 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
 
                 _webSocket = await CreateAndConnectWebSocketAsync(cancellationToken).ConfigureAwait(false);
                 SignalCliTelemetry.ConnectionAttempts.Add(1,
-                    new KeyValuePair<string, object?>("phase", "reconnect"),
-                    new KeyValuePair<string, object?>("outcome", "success"));
+                    new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "reconnect"),
+                    new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "success"));
 
                 // Reset attempt counter on successful reconnection.
                 attempt = 0;
@@ -316,8 +316,8 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             catch (Exception ex)
             {
                 SignalCliTelemetry.ConnectionAttempts.Add(1,
-                    new KeyValuePair<string, object?>("phase", "reconnect"),
-                    new KeyValuePair<string, object?>("outcome", "failure"));
+                    new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "reconnect"),
+                    new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "failure"));
                 _logger.LogWarning(ex, "{ClassName} reconnection attempt {Attempt} failed",
                     nameof(SignalCliJsonRpcClientService), attempt);
             }
@@ -448,7 +448,7 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                     await _channel.Writer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
                     SignalCliTelemetry.BufferedMessages.Add(1);
                     SignalCliTelemetry.Frames.Add(1,
-                        new KeyValuePair<string, object?>("outcome", "message"));
+                        new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "message"));
                     _logger.LogDebug("{ClassName} wrote message from {Sender} to channel",
                         nameof(SignalCliJsonRpcClientService),
                         message.Envelope.Source ?? message.Envelope.SourceNumber ?? "unknown");
@@ -456,7 +456,7 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 else
                 {
                     SignalCliTelemetry.Frames.Add(1,
-                        new KeyValuePair<string, object?>("outcome", "unrecognized"));
+                        new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "unrecognized"));
                     stream.Position = 0;
                     var rawText = Encoding.UTF8.GetString(stream.GetBuffer(), 0, (int)stream.Length);
                     _logger.LogDebug("{ClassName} received WebSocket frame that could not be deserialized: {RawFrame}",
@@ -476,7 +476,7 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             catch (JsonException ex)
             {
                 SignalCliTelemetry.Frames.Add(1,
-                    new KeyValuePair<string, object?>("outcome", "invalid_json"));
+                    new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "invalid_json"));
                 _logger.LogWarning(ex, "{ClassName} failed to deserialize WebSocket message",
                     nameof(SignalCliJsonRpcClientService));
             }
