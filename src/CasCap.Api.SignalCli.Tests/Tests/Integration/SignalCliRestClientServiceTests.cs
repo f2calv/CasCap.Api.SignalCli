@@ -569,6 +569,12 @@ public class SignalCliRestClientServiceTests(ITestOutputHelper output) : TestBas
     {
         var result = await _svc.ListGroups(_config.PhoneNumber, TestContext.Current.CancellationToken);
         Assert.NotNull(result);
+        Assert.All(result, group =>
+        {
+            Assert.True(group.Matches(group.Id));
+            if (group.InternalId is not null)
+                Assert.True(group.Matches(group.InternalId));
+        });
         _output.WriteLine($"Groups={result.Length}");
     }
 

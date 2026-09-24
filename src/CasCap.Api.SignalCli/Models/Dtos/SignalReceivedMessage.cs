@@ -9,6 +9,8 @@ namespace CasCap.Models.Dtos;
 /// </remarks>
 public sealed record SignalReceivedMessage : IReceivedNotification
 {
+    private SignalDataMessage? Content => Envelope.DataMessage ?? Envelope.SyncMessage?.SentMessage;
+
     /// <summary>
     /// The message envelope containing source, timestamp and typed message data.
     /// </summary>
@@ -25,23 +27,24 @@ public sealed record SignalReceivedMessage : IReceivedNotification
     [JsonIgnore]
     string IReceivedNotification.Sender => Envelope.Source ?? Envelope.SourceNumber ?? "unknown";
 
-    /// <inheritdoc/>
+    /// <summary>The unprefixed <see cref="SignalGroup.InternalId"/> carried by an inbound envelope.</summary>
+    /// <remarks>Use <see cref="SignalGroup.Matches(string?)"/> to compare it with a listed group.</remarks>
     [JsonIgnore]
-    string? IReceivedNotification.GroupId => Envelope.DataMessage?.GroupInfo?.GroupId;
+    string? IReceivedNotification.GroupId => Content?.GroupInfo?.GroupId;
 
     /// <inheritdoc/>
     [JsonIgnore]
-    string? IReceivedNotification.Message => Envelope.DataMessage?.Message;
+    string? IReceivedNotification.Message => Content?.Message;
 
     /// <inheritdoc/>
     [JsonIgnore]
-    bool IReceivedNotification.HasContent => Envelope.DataMessage is not null;
+    bool IReceivedNotification.HasContent => Content is not null;
 
     /// <inheritdoc/>
     [JsonIgnore]
-    long? IReceivedNotification.Timestamp => Envelope.DataMessage?.Timestamp;
+    long? IReceivedNotification.Timestamp => Content?.Timestamp;
 
     /// <inheritdoc/>
     [JsonIgnore]
-    IReadOnlyList<INotificationAttachment>? IReceivedNotification.Attachments => Envelope.DataMessage?.Attachments;
+    IReadOnlyList<INotificationAttachment>? IReceivedNotification.Attachments => Content?.Attachments;
 }

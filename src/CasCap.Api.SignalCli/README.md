@@ -178,6 +178,14 @@ Every method returns `null` or `false` on failure and logs the cause; failures a
 | `ListStickerPacks(number)` | `GET /v1/sticker-packs/{number}` | Lists installed sticker packs |
 | `AddStickerPack(number, packId, packKey)` | `POST /v1/sticker-packs/{number}` | Installs a sticker pack |
 
+## Group Identifiers
+
+Signal groups expose two opaque identifier forms. `SignalGroup.Id` is the `group.`-prefixed value
+required in `SignalMessageRequest.Recipients` when sending. `SignalGroup.InternalId` is the
+unprefixed value carried by inbound `IReceivedNotification.GroupId`; it cannot be derived by
+removing the prefix from `Id`. Use `SignalGroup.Matches(groupId)` when matching an identifier whose
+source is not known.
+
 ## Configuration
 
 Registered via `IServiceCollection.AddSignalCli()`. Configuration section: `CasCap:SignalCliConfig`.
@@ -187,6 +195,7 @@ Registered via `IServiceCollection.AddSignalCli()`. Configuration section: `CasC
 | `TransportMode` | `SignalCliTransport` | `JsonRpc` | — | Transport mode: `Normal`, `Native` (HTTP polling) or `JsonRpc`, `JsonRpcNative` (WebSocket) |
 | `BaseAddress` | `string` | — | ✓ | Base URL of the signal-cli REST API (e.g. `http://localhost:8080`) |
 | `HealthCheckUri` | `string` | `"v1/health"` | — | Path used to verify API connectivity |
+| `HealthCheckExpectedHttpStatusCodes` | `IReadOnlyList<int>` | `[200, 204]` | — | Status codes accepted from the health endpoint |
 | `HealthCheck` | `KubernetesProbeTypes` | `Readiness` | — | Kubernetes probe type for the health check tag |
 | `PhoneNumber` | `string` | — | ✓ | Registered Signal sender number (e.g. `"+49151..."`) |
 | `PhoneNumberDebug` | `string?` | `null` | — | Optional recipient number for debug/diagnostic messages ("Note to Self" feed) |
@@ -231,6 +240,7 @@ If `Username` and `Password` are left unset, the library falls back to `CasCap:A
       "TransportMode": "JsonRpc",
       "BaseAddress": "http://signalcli.monitoring.svc.cluster.local",
       "HealthCheckUri": "v1/about",
+    "HealthCheckExpectedHttpStatusCodes": [200, 204],
       "HealthCheck": "Readiness",
       "PhoneNumber": "+49151...",
       "PhoneNumberDebug": "+49151...",
@@ -252,7 +262,9 @@ If `Username` and `Password` are left unset, the library falls back to `CasCap:A
 
 ## Resilience
 
-The health check and `SignalCliRestClientService` share one named `HttpClient`, so a single standard resilience pipeline covers every REST call.
+`SignalCliRestClientService` uses the standard resilience pipeline for REST calls. Health checks use
+a separate named `HttpClient` with retries disabled: a probe is a point-in-time result, and the
+orchestrator already repeats it on its own schedule.
 
 Retries are limited to methods the server can safely process twice. A failed `POST` — sending a message, uploading an attachment — is **not** replayed, because the request may well have been delivered before the failure surfaced and a replay would send the message twice. Transient failures on those calls surface to the caller instead.
 

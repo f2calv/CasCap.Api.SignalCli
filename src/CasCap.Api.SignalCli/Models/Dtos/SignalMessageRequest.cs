@@ -30,9 +30,11 @@ public sealed record SignalMessageRequest : INotificationMessage
     [JsonPropertyName("number")]
     public required string Number { get; init; }
 
-    /// <summary>
-    /// Recipient phone numbers or group IDs.
-    /// </summary>
+    /// <summary>Recipient phone numbers or <c>group.</c>-prefixed group identifiers.</summary>
+    /// <remarks>
+    /// Use <see cref="SignalGroup.Id"/> for a group recipient. The unprefixed
+    /// <see cref="SignalGroup.InternalId"/> carried by inbound messages is not accepted for sending.
+    /// </remarks>
     [JsonPropertyName("recipients")]
     public required string[] Recipients { get; init; }
 

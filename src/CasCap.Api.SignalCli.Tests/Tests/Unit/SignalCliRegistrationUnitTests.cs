@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace CasCap.Tests.Unit;
 
 /// <summary>
@@ -55,6 +57,63 @@ public class SignalCliRegistrationUnitTests(ITestOutputHelper output)
 
         using var sp = services.BuildServiceProvider();
         Assert.Single(sp.GetServices<ISignalCliClient>());
+    }
+
+    [Fact]
+    public async Task Configuration_BindsHealthCheckExpectedHttpStatusCodes()
+    {
+        // Regression for #4: inheriting the interface default left no concrete property for the
+        // configuration binder to populate.
+        await using var sp = BuildProvider(SignalCliTransport.Normal, new Dictionary<string, string?>
+        {
+            [Key($"{nameof(SignalCliConfig.HealthCheckExpectedHttpStatusCodes)}:0")] = "201",
+            [Key($"{nameof(SignalCliConfig.HealthCheckExpectedHttpStatusCodes)}:1")] = "202",
+        });
+
+        var config = sp.GetRequiredService<IOptions<SignalCliConfig>>().Value;
+
+        Assert.Equal([200, 204, 201, 202], config.HealthCheckExpectedHttpStatusCodes);
+    }
+
+    [Fact]
+    public async Task HealthClient_DoesNotRetryTransientFailures()
+    {
+        // Regression for #3: an orchestrator already repeats readiness probes, so one check must
+        // perform one request rather than applying the standard transient-failure retry policy.
+        var configuration = BuildConfiguration(SignalCliTransport.Normal);
+        var handler = StubHttpMessageHandler.RespondStatus(HttpStatusCode.ServiceUnavailable);
+        var services = new ServiceCollection().AddSingleton<IConfiguration>(configuration).AddXUnitLogging(output);
+        services.AddSignalCli(configuration);
+        services.AddHttpClient(nameof(SignalCliConnectionHealthCheck))
+            .ConfigurePrimaryHttpMessageHandler(() => handler);
+
+        await using var sp = services.BuildServiceProvider();
+        var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SignalCliConnectionHealthCheck));
+        using var response = await client.GetAsync("v1/health", TestContext.Current.CancellationToken);
+
+        Assert.Single(handler.Calls);
+    }
+
+    [Fact]
+    public async Task RestClient_RetriesTransientGetFailures()
+    {
+        var attempts = 0;
+        var handler = new StubHttpMessageHandler(_ =>
+            new HttpResponseMessage(++attempts == 1
+                ? HttpStatusCode.ServiceUnavailable
+                : HttpStatusCode.OK));
+        var configuration = BuildConfiguration(SignalCliTransport.Normal);
+        var services = new ServiceCollection().AddSingleton<IConfiguration>(configuration).AddXUnitLogging(output);
+        services.AddSignalCli(configuration);
+        services.AddHttpClient(nameof(SignalCliRestClientService))
+            .ConfigurePrimaryHttpMessageHandler(() => handler);
+
+        await using var sp = services.BuildServiceProvider();
+        var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SignalCliRestClientService));
+        using var response = await client.GetAsync("v1/about", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, handler.Calls.Count);
     }
 
     [Fact]
