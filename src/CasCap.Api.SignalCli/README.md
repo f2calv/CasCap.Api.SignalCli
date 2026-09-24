@@ -54,6 +54,25 @@ public sealed class EchoWorker(ISignalCliReceiver receiver, ISignalCliClient cli
 
 Calling `ConnectAsync` first is optional but surfaces connection failures at startup instead of on the first message. On the REST transport it is a no-op.
 
+## Observability
+
+The library emits provider-neutral diagnostics and does not choose or configure an exporter. A
+consuming host registers the stable `CasCap.Api.SignalCli` meter and activity source alongside its
+configurable application meter. The library source name is deliberately fixed so dashboards and
+instrumentation registration do not vary between hosts. Count-like instruments use the UCUM unit
+`1`.
+
+| Metric | Unit | Meaning |
+| --- | --- | --- |
+| `signalcli.receive.buffered_messages` | `1` | Current messages buffered for consumers |
+| `signalcli.receive.connection_attempts` | `1` | Initial and reconnect attempts by bounded outcome |
+| `signalcli.receive.frames` | `1` | Received frames by decode outcome |
+| `signalcli.receive.reconnections` | `1` | Reconnection attempts |
+| `signalcli.receive.stale_streams` | `1` | Streams aborted by the staleness watchdog |
+
+The only dimensions are bounded phase/outcome values. Account numbers, endpoints, sender identities,
+and message content are never emitted as metric labels or trace attributes.
+
 ## Controller
 
 The MVC controller lives in a separate package, [CasCap.Api.SignalCli.AspNetCore](../CasCap.Api.SignalCli.AspNetCore), so that worker services, console apps and daemons can consume this library without taking a dependency on MVC or API versioning.
