@@ -55,23 +55,8 @@ source. Exporter configuration remains the consuming host's responsibility.
 
 The [Generic Host sample](samples/GenericHost) runs against the pinned signal-cli REST API in
 [`docker-compose.yml`](docker-compose.yml). It verifies the API and consumes one long-lived receive stream without logging
-sender identities or message content. It also carries the voice speech-to-text acceptance harness.
-
-## Container Image
-
-The library ships as a NuGet package; the image exists for the sample, and its reason to exist is ffmpeg. The voice
-harness converts audio before transcribing it, and baking ffmpeg into the image removes "install ffmpeg on the host"
-from the acceptance procedure.
-
-[`Dockerfile`](Dockerfile) cross-compiles a single multi-architecture image for `linux/amd64` and `linux/arm64`.
-[`build.ps1`](build.ps1) and [`build.sh`](build.sh) mirror the `containerize` job in
-[`ci.yml`](.github/workflows/ci.yml) and derive every provenance value from git.
-
-```powershell
-./build.ps1                     # local multi-arch validation build
-./build.ps1 -Push               # publish to ghcr.io, tagged from GitVersion
-docker compose --profile harness up --build harness
-```
+sender identities or message content. Attachment metadata and downloaded byte counts are reported without logging
+filenames or attachment content.
 
 ## Tests
 
@@ -79,7 +64,7 @@ Credential-free unit tests run in CI. Integration tests target the local contain
 account; configuration is supplied through the test project's User Secrets or environment variables.
 
 ```powershell
-dotnet test src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
+dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
 ```
 
 ## Resources

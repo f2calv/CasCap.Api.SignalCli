@@ -2,7 +2,7 @@ namespace CasCap.Tests.Integration;
 
 /// <summary>
 /// Well-known xUnit trait names and values for the signal-cli integration tests, allowing
-/// subsets to be selected with <c>dotnet test --filter</c>.
+/// subsets to be selected with <c>dotnet test --filter-trait</c>.
 /// </summary>
 /// <remarks>
 /// Two axes are provided: <see cref="Feature"/> classifies a test by the signal-cli endpoint
@@ -65,7 +65,7 @@ internal static class SignalCliTraits
     /// <remarks>
     /// The REST <c>GET /v1/receive</c> endpoint returns HTTP 400 when signal-cli runs in
     /// json-rpc mode (message reception is WebSocket-only). Exclude these with
-    /// <c>--filter "Transport!=Polling"</c> when testing against a json-rpc deployment.
+    /// <c>--filter-not-trait Transport=Polling</c> when testing against a json-rpc deployment.
     /// </remarks>
     public const string Polling = nameof(Polling);
 }

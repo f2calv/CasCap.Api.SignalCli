@@ -7,16 +7,8 @@
 #
 #   docker compose up --detach
 #
-# ── Voice Speech-to-Text Harness ─────────────────────────────────────────────
-#   Starts a local speech-to-text server, then runs the GenericHost sample against
-#   it. See samples/GenericHost/README.md for configuration and evidence fields.
-#
-#   docker compose --profile harness up --detach whisper-asr
-#   docker compose --profile harness run --rm harness
-#
-# Service endpoints:
+# Service endpoint:
 #   signal-cli REST : http://localhost:8080
-#   whisper-asr     : http://localhost:9000/docs   [harness profile]
 # =============================================================================
 services:
   signalcli:
@@ -37,56 +29,5 @@ services:
       start_period: 15s
     restart: unless-stopped
 
-  #A local speech-to-text endpoint for the harness. The deployed cluster runs the same image and
-  #version, so the wire contract proven here is the one that runs in production.
-  whisper-asr:
-    profiles: [ harness ]
-    image: onerahmet/openai-whisper-asr-webservice:v1.10.0
-    environment:
-      #base keeps the first pull small; small/medium are more accurate and much slower on CPU.
-      ASR_MODEL: base
-      ASR_ENGINE: openai_whisper
-    ports:
-      - 9000:9000
-    volumes:
-      - whisper_cache:/root/.cache
-    healthcheck:
-      #The first start downloads the model, so allow a long start period before failing.
-      test: [ CMD-SHELL, "curl -sf http://localhost:9000/docs || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 30s
-    restart: unless-stopped
-
-  #The GenericHost sample, carrying the ffmpeg the voice speech-to-text harness needs.
-  #Behind a profile so `docker compose up` keeps starting signal-cli alone:
-  #  docker compose --profile harness up --build harness
-  harness:
-    profiles: [ harness ]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ghcr.io/f2calv/cascap.api.signalcli:latest-dev
-    depends_on:
-      whisper-asr:
-        condition: service_healthy
-    environment:
-      DOTNET_ENVIRONMENT: Development
-      #Only contacted when VoiceSttHarness:AudioFilePath is unset, i.e. not in file mode.
-      CasCap__SignalCliConfig__BaseAddress: http://signalcli:8080
-      #Environment beats user secrets, so a secrets.json pointing at a cluster endpoint still
-      #resolves to the sidecar when run through compose.
-      VoiceSttHarness__Provider: WhisperAsr
-      VoiceSttHarness__Endpoint: http://whisper-asr:9000
-    volumes:
-      #Endpoint, account and expected transcript hash live here, never in a tracked file.
-      #Point USER_SECRETS_DIR at the real store to share it with `dotnet user-secrets`:
-      #  Windows $APPDATA/Microsoft/UserSecrets/<id>, Linux $HOME/.microsoft/usersecrets/<id>
-      - ${USER_SECRETS_DIR:-./.secrets}:/home/app/.microsoft/usersecrets/890bd946-ed0b-4c13-abdf-070bc0b3fabc:ro
-      - ./testdata:/testdata:ro
-    restart: "no"
-
 volumes:
   signalcli_data:
-  whisper_cache:
