@@ -85,13 +85,13 @@ dotnet user-secrets --project src/CasCap.Api.SignalCli.Tests set "SignalCliTests
 The credential-free subset, matching CI:
 
 ```bash
-dotnet test src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
+dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
 ```
 
 Everything, including the tests that need a live server:
 
 ```bash
-dotnet test src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj
+dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj
 ```
 
 ## Dependencies

@@ -26,6 +26,7 @@
       "type": "process",
       "args": [
         "test",
+        "--project",
         "${workspaceFolder}/src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj",
         "--filter-not-trait",
         "Category=Integration"

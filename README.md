@@ -64,7 +64,7 @@ Credential-free unit tests run in CI. Integration tests target the local contain
 account; configuration is supplied through the test project's User Secrets or environment variables.
 
 ```powershell
-dotnet test src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
+dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
 ```
 
 ## Resources
