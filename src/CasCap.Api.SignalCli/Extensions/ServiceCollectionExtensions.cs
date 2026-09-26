@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Http.Resilience;
+
 namespace CasCap.Extensions;
 
 /// <summary>
@@ -27,9 +29,13 @@ public static class ServiceCollectionExtensions
 
         var config = services.AddAndGetCasCapConfiguration<SignalCliConfig>(configuration, configure);
 
-        services.AddHttpClient(nameof(SignalCliRestClientService), ConfigureHttpClient)
+        services.AddHttpClient(nameof(SignalCliRestClientService), ConfigureSendHttpClient)
             .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
-            .AddStandardResilience(nameof(SignalCliRestClientService));
+            .AddStandardResilience(nameof(SignalCliRestClientService))
+            // The standard handler's 10-second attempt timeout would otherwise cap every send well
+            // below SendTimeoutMs. The wrapper completes a slow send after the caller gave up, so a
+            // premature timeout reports a delivered message as failed and invites a duplicate.
+            .Configure(options => ApplySendTimeout(options, TimeSpan.FromMilliseconds(config.SendTimeoutMs)));
 
         services.AddHttpClient(nameof(SignalCliConnectionHealthCheck), ConfigureHttpClient)
         .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
@@ -68,6 +74,31 @@ public static class ServiceCollectionExtensions
                 .AddCheck<SignalCliConnectionHealthCheck>(nameof(SignalCliConnectionHealthCheck), tags: config.HealthCheck.GetTags());
 
         return services;
+    }
+
+    /// <summary>
+    /// Sizes the resilience timeouts of the REST client to <paramref name="sendTimeout"/>.
+    /// </summary>
+    /// <remarks>
+    /// The circuit breaker requires a sampling window of at least twice the attempt timeout.
+    /// </remarks>
+    public static void ApplySendTimeout(HttpStandardResilienceOptions options, TimeSpan sendTimeout)
+    {
+        options.AttemptTimeout.Timeout = sendTimeout;
+        options.TotalRequestTimeout.Timeout = sendTimeout;
+        if (options.CircuitBreaker.SamplingDuration < sendTimeout * 2)
+            options.CircuitBreaker.SamplingDuration = sendTimeout * 2;
+    }
+
+    /// <summary>Configures the REST client, leaving timeouts to the resilience pipeline.</summary>
+    /// <remarks>
+    /// <see cref="HttpClient.Timeout"/> defaults to 100 seconds, below the default send timeout, so it
+    /// is disabled here in favour of the pipeline's timeouts.
+    /// </remarks>
+    private static void ConfigureSendHttpClient(IServiceProvider sp, HttpClient client)
+    {
+        ConfigureHttpClient(sp, client);
+        client.Timeout = Timeout.InfiniteTimeSpan;
     }
 
     /// <summary>

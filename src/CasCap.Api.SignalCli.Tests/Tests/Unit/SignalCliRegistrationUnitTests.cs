@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Http.Resilience;
 using System.Net;
 
 namespace CasCap.Tests.Unit;
@@ -165,6 +166,33 @@ public class SignalCliRegistrationUnitTests(ITestOutputHelper output)
         Assert.Contains(nameof(SignalCliConfig.Username), ex.Message);
         Assert.Contains(nameof(ApiAuthConfig), ex.Message);
         output.WriteLine(ex.Message);
+    }
+
+    [Fact]
+    public void RestClient_ResilienceTimeoutsFollowTheSendTimeout()
+    {
+        using var sp = BuildProvider(SignalCliTransport.JsonRpc, new Dictionary<string, string?>
+        {
+            [Key(nameof(SignalCliConfig.SendTimeoutMs))] = "45000",
+        });
+
+        // The standard handler registers its options under "<client name>-standard".
+        var options = sp.GetRequiredService<IOptionsMonitor<HttpStandardResilienceOptions>>()
+            .Get($"{nameof(SignalCliRestClientService)}-standard");
+
+        Assert.Equal(TimeSpan.FromSeconds(45), options.AttemptTimeout.Timeout);
+        Assert.Equal(TimeSpan.FromSeconds(45), options.TotalRequestTimeout.Timeout);
+        Assert.True(options.CircuitBreaker.SamplingDuration >= TimeSpan.FromSeconds(90));
+    }
+
+    [Fact]
+    public void RestClient_HttpClientTimeoutDoesNotCapTheSend()
+    {
+        using var sp = BuildProvider(SignalCliTransport.JsonRpc);
+
+        var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(SignalCliRestClientService));
+
+        Assert.Equal(Timeout.InfiniteTimeSpan, client.Timeout);
     }
 
     #region Private helpers

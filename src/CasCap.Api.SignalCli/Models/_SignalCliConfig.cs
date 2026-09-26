@@ -55,7 +55,8 @@ public sealed record SignalCliConfig : IAppConfig, IHealthCheckConfig
     /// Defaults to 180 000 ms (3 minutes) to accommodate large attachments.
     /// </summary>
     /// <remarks>
-    /// Used by <see cref="CasCap.Services.SignalCliRestClientService"/>.
+    /// Used by <see cref="CasCap.Services.SignalCliRestClientService"/>, and also sizes that client's
+    /// resilience attempt and total timeouts so the pipeline cannot abandon a send first.
     /// </remarks>
     [Range(1, int.MaxValue)]
     public int SendTimeoutMs { get; init; } = 180_000;
