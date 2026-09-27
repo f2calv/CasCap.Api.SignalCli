@@ -73,6 +73,11 @@ instrumentation registration do not vary between hosts. Count-like instruments u
 The only dimensions are bounded phase/outcome values. Account numbers, endpoints, sender identities,
 and message content are never emitted as metric labels or trace attributes.
 
+`SendMessage` diagnostics report acknowledgement or failure category without message text,
+recipient identifiers, response bodies or exception details. Hosts should also avoid HTTP body
+logging. A failed or cancelled send does not prove that the recipient received nothing; do not
+automatically repeat a send whose outcome is uncertain.
+
 ## Controller
 
 The MVC controller lives in a separate package, [CasCap.Api.SignalCli.AspNetCore](../CasCap.Api.SignalCli.AspNetCore), so that worker services, console apps and daemons can consume this library without taking a dependency on MVC or API versioning.
