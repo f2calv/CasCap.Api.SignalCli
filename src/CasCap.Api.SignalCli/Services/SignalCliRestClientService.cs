@@ -77,11 +77,11 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
         {
             var tpl = await PostJsonAsync<SignalMessageResponse, string>(requestUri, msg, TimeSpan.FromMilliseconds(_config.SendTimeoutMs), cancellationToken: cancellationToken).ConfigureAwait(false);
             if (tpl.result is not null)
-                _logger.LogDebug("{ClassName} message {Message} sent, timestamp {Timestamp}",
-                    nameof(SignalCliRestClientService), msg.Message, tpl.result.Timestamp);
+                _logger.LogDebug("{ClassName} message send acknowledged",
+                    nameof(SignalCliRestClientService));
             else
-                _logger.LogWarning("{ClassName} {RequestUri} failed: {ErrorBody}",
-                    nameof(SignalCliRestClientService), requestUri, tpl.error);
+                _logger.LogWarning("{ClassName} message send returned no acknowledgement",
+                    nameof(SignalCliRestClientService));
             return tpl.result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -90,8 +90,8 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "{ClassName} message send failure to {RequestUri}",
-                nameof(SignalCliRestClientService), requestUri);
+            _logger.LogError("{ClassName} message send failed with {ExceptionType}",
+                nameof(SignalCliRestClientService), ex.GetType().Name);
         }
         return null;
     }
