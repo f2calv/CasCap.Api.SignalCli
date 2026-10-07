@@ -77,8 +77,11 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
         {
             var tpl = await PostJsonAsync<SignalMessageResponse, string>(requestUri, msg, TimeSpan.FromMilliseconds(_config.SendTimeoutMs), cancellationToken: cancellationToken).ConfigureAwait(false);
             if (tpl.result is not null)
-                _logger.LogDebug("{ClassName} message send acknowledged",
-                    nameof(SignalCliRestClientService));
+            {
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("{ClassName} message send acknowledged",
+                        nameof(SignalCliRestClientService));
+            }
             else
                 _logger.LogWarning("{ClassName} message send returned no acknowledgement",
                     nameof(SignalCliRestClientService));
@@ -131,8 +134,11 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
             var tpl = await base.GetAsync<SignalReceivedMessage[], object>(requestUri, cancellationToken: cancellationToken).ConfigureAwait(false);
             var messages = tpl.result;
             if (messages is not null)
-                _logger.LogDebug("{ClassName} received {Count} message(s) for {Number}",
-                    nameof(SignalCliRestClientService), messages.Length, number);
+            {
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("{ClassName} received {Count} message(s) for {Number}",
+                        nameof(SignalCliRestClientService), messages.Length, number);
+            }
             return messages;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -432,8 +438,11 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
         {
             var tpl = await PostJsonAsync<CreateGroupResponse, string>(requestUri, request, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (tpl.result is not null)
-                _logger.LogInformation("{ClassName} group {GroupName} created with id {GroupId}",
-                    nameof(SignalCliRestClientService), request.Name, tpl.result.Id);
+            {
+                if (_logger.IsEnabled(LogLevel.Information))
+                    _logger.LogInformation("{ClassName} group {GroupName} created with id {GroupId}",
+                        nameof(SignalCliRestClientService), request.Name, tpl.result.Id);
+            }
             else
                 _logger.LogWarning("{ClassName} create group failed for {Number}: {ErrorBody}",
                     nameof(SignalCliRestClientService), number, tpl.error);
@@ -665,8 +674,11 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
         {
             var tpl = await PostJsonAsync<CreatePollResponse, string>(requestUri, request, cancellationToken: cancellationToken).ConfigureAwait(false);
             if (tpl.result is not null)
-                _logger.LogInformation("{ClassName} poll created for {Recipient}, timestamp {Timestamp}",
-                    nameof(SignalCliRestClientService), request.Recipient, tpl.result.Timestamp);
+            {
+                if (_logger.IsEnabled(LogLevel.Information))
+                    _logger.LogInformation("{ClassName} poll created for {Recipient}, timestamp {Timestamp}",
+                        nameof(SignalCliRestClientService), request.Recipient, tpl.result.Timestamp);
+            }
             else
                 _logger.LogWarning("{ClassName} create poll failed for {Number}: {ErrorBody}",
                     nameof(SignalCliRestClientService), number, tpl.error);

@@ -1,8 +1,8 @@
+using CasCap.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
-using CasCap.Diagnostics;
 
 namespace CasCap.Services;
 
@@ -80,8 +80,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             SingleReader = false
         });
 
-        _logger.LogInformation("{ClassName} initialized, transport={Transport}, baseAddress={BaseAddress}, channelCapacity={ChannelCapacity}",
-            nameof(SignalCliJsonRpcClientService), _config.TransportMode, _config.BaseAddress, _config.ChannelCapacity);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("{ClassName} initialized, transport={Transport}, baseAddress={BaseAddress}, channelCapacity={ChannelCapacity}",
+                nameof(SignalCliJsonRpcClientService), _config.TransportMode, _config.BaseAddress, _config.ChannelCapacity);
     }
 
     /// <summary>
@@ -113,8 +114,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                         new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "initial"),
                         new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "success"));
 
-                    _logger.LogInformation("{ClassName} WebSocket connected for {PhoneNumber}",
-                        nameof(SignalCliJsonRpcClientService), _config.PhoneNumber.MaskPhoneNumber());
+                    if (_logger.IsEnabled(LogLevel.Information))
+                        _logger.LogInformation("{ClassName} WebSocket connected for {PhoneNumber}",
+                            nameof(SignalCliJsonRpcClientService), _config.PhoneNumber.MaskPhoneNumber());
 
                     _receiveLoopTask = Task.Run(() => ReceiveLoopWithReconnectAsync(_wsCts.Token), _wsCts.Token);
                     StartStalenessWatchdog();
@@ -185,8 +187,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
     {
         if (_webSocket is null || _webSocket.State is not WebSocketState.Open)
         {
-            _logger.LogDebug("{ClassName} WebSocket not open (state={State}), reconnecting before receive",
-                nameof(SignalCliJsonRpcClientService), _webSocket?.State.ToString() ?? "null");
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("{ClassName} WebSocket not open (state={State}), reconnecting before receive",
+                    nameof(SignalCliJsonRpcClientService), _webSocket?.State.ToString() ?? "null");
             await ConnectAsync(cancellationToken).ConfigureAwait(false);
         }
 
@@ -204,8 +207,11 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
         }
 
         if (messages.Count > 0)
-            _logger.LogDebug("{ClassName} drained {Count} message(s) for {Account}",
-                nameof(SignalCliJsonRpcClientService), messages.Count, account);
+        {
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("{ClassName} drained {Count} message(s) for {Account}",
+                    nameof(SignalCliJsonRpcClientService), messages.Count, account);
+        }
 
         return messages.Count > 0 ? messages.ToArray() : null;
     }
@@ -244,8 +250,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
     private async Task<ClientWebSocket> CreateAndConnectWebSocketAsync(CancellationToken cancellationToken)
     {
         var wsUri = BuildWebSocketUri(_config.BaseAddress, _config.PhoneNumber);
-        _logger.LogInformation("{ClassName} connecting to WebSocket at {Uri}", nameof(SignalCliJsonRpcClientService),
-            MaskPhoneNumberInUri(wsUri, _config.PhoneNumber));
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("{ClassName} connecting to WebSocket at {Uri}", nameof(SignalCliJsonRpcClientService),
+                MaskPhoneNumberInUri(wsUri, _config.PhoneNumber));
 
         var ws = new ClientWebSocket();
         _configureWebSocket?.Invoke(ws);
@@ -310,8 +317,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
 
                 // Reset attempt counter on successful reconnection.
                 attempt = 0;
-                _logger.LogInformation("{ClassName} WebSocket reconnected successfully",
-                    nameof(SignalCliJsonRpcClientService));
+                if (_logger.IsEnabled(LogLevel.Information))
+                    _logger.LogInformation("{ClassName} WebSocket reconnected successfully",
+                        nameof(SignalCliJsonRpcClientService));
             }
             catch (Exception ex)
             {
@@ -346,8 +354,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             return;
 
         _watchdogTask = Task.Run(() => ReceiveStalenessWatchdogAsync(_wsCts.Token), _wsCts.Token);
-        _logger.LogInformation("{ClassName} receive-staleness watchdog enabled, timeout={Timeout}",
-            nameof(SignalCliJsonRpcClientService), _receiveStalenessTimeout);
+        if (_logger.IsEnabled(LogLevel.Information))
+            _logger.LogInformation("{ClassName} receive-staleness watchdog enabled, timeout={Timeout}",
+                nameof(SignalCliJsonRpcClientService), _receiveStalenessTimeout);
     }
 
     /// <summary>
@@ -392,8 +401,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "{ClassName} error aborting WebSocket from watchdog",
-                        nameof(SignalCliJsonRpcClientService));
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug(ex, "{ClassName} error aborting WebSocket from watchdog",
+                            nameof(SignalCliJsonRpcClientService));
                 }
             }
         }
@@ -417,8 +427,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
         // frame has had a chance to arrive.
         Volatile.Write(ref _lastFrameTicks, DateTime.UtcNow.Ticks);
 
-        _logger.LogDebug("{ClassName} receive loop started, WebSocket state={State}",
-            nameof(SignalCliJsonRpcClientService), _webSocket?.State);
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("{ClassName} receive loop started, WebSocket state={State}",
+                nameof(SignalCliJsonRpcClientService), _webSocket?.State);
 
         while (!cancellationToken.IsCancellationRequested && _webSocket?.State is WebSocketState.Open)
         {
@@ -449,18 +460,22 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
                     SignalCliTelemetry.BufferedMessages.Add(1);
                     SignalCliTelemetry.Frames.Add(1,
                         new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "message"));
-                    _logger.LogDebug("{ClassName} wrote message from {Sender} to channel",
-                        nameof(SignalCliJsonRpcClientService),
-                        message.Envelope.Source ?? message.Envelope.SourceNumber ?? "unknown");
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                        _logger.LogDebug("{ClassName} wrote message from {Sender} to channel",
+                            nameof(SignalCliJsonRpcClientService),
+                            message.Envelope.Source ?? message.Envelope.SourceNumber ?? "unknown");
                 }
                 else
                 {
                     SignalCliTelemetry.Frames.Add(1,
                         new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "unrecognized"));
-                    stream.Position = 0;
-                    var rawText = Encoding.UTF8.GetString(stream.GetBuffer(), 0, (int)stream.Length);
-                    _logger.LogDebug("{ClassName} received WebSocket frame that could not be deserialized: {RawFrame}",
-                        nameof(SignalCliJsonRpcClientService), rawText);
+                    if (_logger.IsEnabled(LogLevel.Debug))
+                    {
+                        stream.Position = 0;
+                        var rawText = Encoding.UTF8.GetString(stream.GetBuffer(), 0, (int)stream.Length);
+                        _logger.LogDebug("{ClassName} received WebSocket frame that could not be deserialized: {RawFrame}",
+                            nameof(SignalCliJsonRpcClientService), rawText);
+                    }
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -487,8 +502,9 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             }
         }
 
-        _logger.LogDebug("{ClassName} receive loop exiting, WebSocket state={State}",
-            nameof(SignalCliJsonRpcClientService), _webSocket?.State);
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("{ClassName} receive loop exiting, WebSocket state={State}",
+                nameof(SignalCliJsonRpcClientService), _webSocket?.State);
     }
 
     /// <summary>
@@ -561,7 +577,8 @@ public sealed class SignalCliJsonRpcClientService : ISignalCliReceiver, INotifie
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "{ClassName} error during WebSocket close", nameof(SignalCliJsonRpcClientService));
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug(ex, "{ClassName} error during WebSocket close", nameof(SignalCliJsonRpcClientService));
             }
         }
 
