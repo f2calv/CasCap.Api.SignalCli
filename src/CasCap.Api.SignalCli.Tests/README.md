@@ -50,12 +50,14 @@ CasCap.Api.SignalCli.Tests/
 ├── xunit.runner.json
 └── Tests/
     ├── Unit/
+    │   ├── RecordedCall.cs
     │   ├── SignalCliConnectionHealthCheckUnitTests.cs
     │   ├── SignalGroupUnitTests.cs
     │   ├── SignalCliJsonRpcClientServiceUnitTests.cs
     │   ├── SignalCliRegistrationUnitTests.cs
     │   ├── SignalCliRestClientServiceUnitTests.cs
     │   ├── SignalCliTelemetryUnitTests.cs
+    │   ├── StubHttpClientFactory.cs
     │   └── StubHttpMessageHandler.cs
     └── Integration/
         ├── TestBase.cs

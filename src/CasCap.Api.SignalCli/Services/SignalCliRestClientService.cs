@@ -6,20 +6,15 @@ namespace CasCap.Services;
 /// <remarks>
 /// See <see href="https://bbernhard.github.io/signal-cli-rest-api/"/> for the full API specification.
 /// </remarks>
-public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClient, ISignalCliReceiver, INotifier
+/// <param name="logger">Logger instance.</param>
+/// <param name="options">Signal-cli configuration.</param>
+/// <param name="httpClientFactory">Factory used to create the configured HTTP client.</param>
+public sealed class SignalCliRestClientService(
+    ILogger<SignalCliRestClientService> logger,
+    IOptions<SignalCliConfig> options,
+    IHttpClientFactory httpClientFactory)
+    : HttpClientBase(logger, httpClientFactory.CreateClient(nameof(SignalCliRestClientService))), ISignalCliClient, ISignalCliReceiver, INotifier
 {
-    private readonly SignalCliConfig _config;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SignalCliRestClientService"/> class.
-    /// </summary>
-    public SignalCliRestClientService(ILogger<SignalCliRestClientService> logger, IOptions<SignalCliConfig> options, IHttpClientFactory httpClientFactory)
-    {
-        _logger = logger;
-        _config = options.Value;
-        Client = httpClientFactory.CreateClient(nameof(SignalCliRestClientService));
-    }
-
     #region General
 
     /// <summary>
@@ -75,7 +70,7 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
         const string requestUri = "v2/send";
         try
         {
-            var tpl = await PostJsonAsync<SignalMessageResponse, string>(requestUri, msg, TimeSpan.FromMilliseconds(_config.SendTimeoutMs), cancellationToken: cancellationToken).ConfigureAwait(false);
+            var tpl = await PostJsonAsync<SignalMessageResponse, string>(requestUri, msg, TimeSpan.FromMilliseconds(options.Value.SendTimeoutMs), cancellationToken: cancellationToken).ConfigureAwait(false);
             if (tpl.result is not null)
             {
                 if (_logger.IsEnabled(LogLevel.Debug))
@@ -726,14 +721,14 @@ public sealed class SignalCliRestClientService : HttpClientBase, ISignalCliClien
     public async IAsyncEnumerable<SignalReceivedMessage> StreamMessagesAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(_config.ReceivePollIntervalMs));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(options.Value.ReceivePollIntervalMs));
         while (true)
         {
             //Checked rather than used as the loop condition, so cancellation always surfaces as an
             //exception; testing it in the condition exits silently when it lands between iterations.
             cancellationToken.ThrowIfCancellationRequested();
 
-            var messages = await ReceiveMessages(_config.PhoneNumber, cancellationToken).ConfigureAwait(false);
+            var messages = await ReceiveMessages(options.Value.PhoneNumber, cancellationToken).ConfigureAwait(false);
             if (messages is not null)
                 foreach (var message in messages)
                     yield return message;
