@@ -70,8 +70,9 @@ public sealed class SignalCliRestClientService(
         const string requestUri = "v2/send";
         try
         {
-            var tpl = await PostJsonAsync<SignalMessageResponse, string>(requestUri, msg, TimeSpan.FromMilliseconds(options.Value.SendTimeoutMs), cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (tpl.result is not null)
+            var tpl = await PostJsonAsync<string, string>(requestUri, msg, TimeSpan.FromMilliseconds(options.Value.SendTimeoutMs), cancellationToken: cancellationToken).ConfigureAwait(false);
+            var result = ParseSendResponse(tpl.result);
+            if (result is not null)
             {
                 if (_logger.IsEnabled(LogLevel.Debug))
                     _logger.LogDebug("{ClassName} message send acknowledged",
@@ -80,7 +81,7 @@ public sealed class SignalCliRestClientService(
             else
                 _logger.LogWarning("{ClassName} message send returned no acknowledgement",
                     nameof(SignalCliRestClientService));
-            return tpl.result;
+            return result;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -92,6 +93,16 @@ public sealed class SignalCliRestClientService(
                 nameof(SignalCliRestClientService), ex.GetType().Name);
         }
         return null;
+    }
+
+    // From 0.101 the wrapper returns one entry per recipient type; a request only ever targets one type.
+    private static SignalMessageResponse? ParseSendResponse(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+        return json.AsSpan().TrimStart().StartsWith('[')
+            ? json.FromJson<SignalMessageResponse[]>()?.FirstOrDefault()
+            : json.FromJson<SignalMessageResponse>();
     }
 
     /// <summary>

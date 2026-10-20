@@ -59,6 +59,23 @@ public class SignalCliRestClientServiceUnitTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task SendMessage_AcceptsPerRecipientTypeArrayResponse()
+    {
+        var handler = StubHttpMessageHandler.RespondJson("""[{"timestamp":"1712153610000"}]""");
+        var svc = CreateService(handler);
+
+        var response = await svc.SendMessage(new SignalMessageRequest
+        {
+            Number = Account,
+            Recipients = ["+10000000001"],
+            Message = "hello"
+        }, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(response);
+        Assert.Equal("1712153610000", response.Timestamp);
+    }
+
+    [Fact]
     public async Task ReceiveMessages_EscapesThePhoneNumberInThePath()
     {
         var handler = StubHttpMessageHandler.RespondJson("[]");

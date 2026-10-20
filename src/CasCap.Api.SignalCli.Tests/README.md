@@ -8,7 +8,7 @@ signal-cli REST API account. All tests target .NET 10.
 
 | Class | Folder | Methods | Test Cases |
 | --- | --- | --- | --- |
-| `SignalCliRestClientServiceUnitTests` | Unit | 15 | 17 |
+| `SignalCliRestClientServiceUnitTests` | Unit | 16 | 18 |
 | `SignalCliConnectionHealthCheckUnitTests` | Unit | 1 | 1 |
 | `SignalGroupUnitTests` | Unit | 1 | 5 |
 | `SignalCliRegistrationUnitTests` | Unit | 12 | 18 |
@@ -17,10 +17,10 @@ signal-cli REST API account. All tests target .NET 10.
 | `SignalCliSendLoggingTests` | Unit | 1 | 3 |
 | `SignalCliRestClientServiceTests` | Integration | 51 | 51 |
 | `SignalCliJsonRpcClientServiceTests` | Integration | 4 | 4 |
-| **Total** | | **96** | **113** |
+| **Total** | | **97** | **114** |
 
 These are source-declared counts, not execution results. The credential-free subset contains
-58 expanded cases; the 55 declared integration cases include the 17 static skips below.
+59 expanded cases; the 55 declared integration cases include the 17 static skips below.
 
 ## Trait Categories
 
