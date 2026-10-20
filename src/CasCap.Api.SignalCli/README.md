@@ -1,12 +1,37 @@
 # CasCap.Api.SignalCli
 
-A .NET library that wraps the [signal-cli REST API](https://bbernhard.github.io/signal-cli-rest-api/) (generated against **v0.98**), providing a typed `SignalCliRestClientService` for sending and managing [Signal](https://signal.org) encrypted messages, together with a health check and DI registration.
+A .NET 10 client for sending, receiving and managing [Signal](https://signal.org) messages through the
+[signal-cli REST API](https://bbernhard.github.io/signal-cli-rest-api/). It provides typed REST operations,
+HTTP or WebSocket reception, health checks and dependency-injection registration.
 
 ## Installation
 
 ```bash
-dotnet add package CasCap.Api.SignalCli
+dotnet package add CasCap.Api.SignalCli
 ```
+
+## Usage
+
+In a Generic Host application, register the client against the host's configuration:
+
+```csharp
+using CasCap.Abstractions;
+using CasCap.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddSignalCli(builder.Configuration);
+
+using var host = builder.Build();
+var client = host.Services.GetRequiredService<ISignalCliClient>();
+var about = await client.GetAbout();
+Console.WriteLine(about is null ? "API unavailable" : "API reachable");
+```
+
+Supply `BaseAddress` and the registered account's `PhoneNumber` as shown in
+[Configuration Examples](#configuration-examples). The consuming application supplies logging,
+configuration providers and any telemetry exporters.
 
 ## Transport Modes
 
@@ -14,41 +39,43 @@ dotnet add package CasCap.Api.SignalCli
 
 | Mode | Server `MODE` | Service | Message reception | Server characteristics |
 | --- | --- | --- | --- | --- |
-| `Normal` | `normal` | `SignalCliRestClientService` | HTTP polling (`GET /v1/receive/{number}`) | Slowest, normal memory |
-| `Native` | `native` | `SignalCliRestClientService` | HTTP polling (`GET /v1/receive/{number}`) | Medium, normal memory |
-| `JsonRpc` | `json-rpc` | `SignalCliJsonRpcClientService` | WebSocket push (`ws://host/v1/receive/{number}`) | Faster, increased memory |
-| `JsonRpcNative` | `json-rpc-native` | `SignalCliJsonRpcClientService` | WebSocket push (`ws://host/v1/receive/{number}`) | Fastest, normal memory |
+| `Normal` | `normal` | `SignalCliRestClientService` | HTTP polling (`GET /v1/receive/{number}`) | JVM process per request |
+| `Native` | `native` | `SignalCliRestClientService` | HTTP polling (`GET /v1/receive/{number}`) | Native process per request |
+| `JsonRpc` | `json-rpc` | `SignalCliJsonRpcClientService` | WebSocket push (`ws://host/v1/receive/{number}`) | Persistent JVM daemon |
+| `JsonRpcNative` | `json-rpc-native` | `SignalCliJsonRpcClientService` | WebSocket push (`ws://host/v1/receive/{number}`) | Persistent native daemon |
 
 On the WebSocket transports the connection is persistent and reconnects automatically with exponential backoff (2 s → 2 min, up to 10 attempts); every non-receive operation still goes over HTTP via the underlying `SignalCliRestClientService`. Registration, verification and device-linking endpoints are unavailable while the server runs in either JSON-RPC mode, per upstream documentation.
 
 ## Receiving Messages
 
-Both transports implement `ISignalCliReceiver`, so inbound messages are consumed the same way regardless of `TransportMode`. Switching between HTTP polling and the WebSocket push stream is a configuration change, not a code change.
+Both transports implement
+[`ISignalCliReceiver`](https://github.com/f2calv/CasCap.Api.SignalCli/blob/main/src/CasCap.Api.SignalCli/Abstractions/ISignalCliReceiver.cs),
+so inbound messages are consumed the same way regardless of `TransportMode`. Switching between HTTP
+polling and the WebSocket push stream is a configuration change, not a code change.
 
 ```csharp
-public sealed class EchoWorker(ISignalCliReceiver receiver, ISignalCliClient client,
-    IOptions<SignalCliConfig> options) : BackgroundService
+using CasCap.Abstractions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+public sealed class ReceiveWorker(
+    ISignalCliReceiver receiver,
+    ILogger<ReceiveWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var account = options.Value.PhoneNumber;
-        await foreach (var msg in receiver.StreamMessagesAsync(stoppingToken))
+        await foreach (var message in receiver.StreamMessagesAsync(stoppingToken))
         {
-            var sender = msg.Envelope.Source;
-            var text = msg.Envelope.DataMessage?.Message;
-            if (sender is null || string.IsNullOrWhiteSpace(text))
-                continue;
-
-            await client.SendMessage(new SignalMessageRequest
-            {
-                Number = account,
-                Recipients = [sender],
-                Message = $"echo: {text}"
-            }, stoppingToken);
+            logger.LogInformation("Received envelope with data message: {HasDataMessage}",
+                message.Envelope.DataMessage is not null);
         }
     }
 }
 ```
+
+Register the worker with `builder.Services.AddHostedService<ReceiveWorker>()` before building the host,
+then run it with `await host.RunAsync()`. This example consumes messages without sending a reply or
+logging their contents or sender identities.
 
 `StreamMessagesAsync` is a cold stream: enumeration starts the transport (connecting the WebSocket where applicable) and abandoning the enumerator stops it. Cancelling the token ends the stream by throwing `OperationCanceledException`, per the usual `IAsyncEnumerable` convention. Only one active enumeration per instance is expected; concurrent consumers compete for messages rather than each receiving a copy.
 
@@ -80,11 +107,17 @@ automatically repeat a send whose outcome is uncertain.
 
 ## Controller
 
-The MVC controller lives in a separate package, [CasCap.Api.SignalCli.AspNetCore](../CasCap.Api.SignalCli.AspNetCore), so that worker services, console apps and daemons can consume this library without taking a dependency on MVC or API versioning.
+The MVC controller lives in a separate
+[CasCap.Api.SignalCli.AspNetCore package](https://github.com/f2calv/CasCap.Api.SignalCli/blob/main/src/CasCap.Api.SignalCli.AspNetCore/README.md).
+Worker services and console applications need not depend on MVC or API versioning.
 
-## Purpose
+## API
 
-`ISignalCliClient` is the abstraction over the full signal-cli REST API surface. Depend on it rather than the concrete `SignalCliRestClientService` so the client can be substituted with a fake in tests. It resolves to `SignalCliRestClientService` in every transport mode, since only message reception differs between them.
+Depend on [`ISignalCliClient`](https://github.com/f2calv/CasCap.Api.SignalCli/blob/main/src/CasCap.Api.SignalCli/Abstractions/ISignalCliClient.cs)
+rather than the concrete `SignalCliRestClientService` so the client can be
+substituted in tests. It resolves to `SignalCliRestClientService` in every transport mode; only message
+reception differs. The tables below summarize common operations; the interface provides the complete
+signatures, including poll and account-settings operations.
 
 Every method returns `null` or `false` on failure and logs the cause; failures are not thrown. The exception is caller-requested cancellation, which propagates as `OperationCanceledException` so an abandoned call is never mistaken for an API error.
 
@@ -221,7 +254,7 @@ Registered via `IServiceCollection.AddSignalCli()`. Configuration section: `CasC
 | `HealthCheckUri` | `string` | `"v1/health"` | — | Path used to verify API connectivity |
 | `HealthCheckExpectedHttpStatusCodes` | `IReadOnlyList<int>` | `[200, 204]` | — | Status codes accepted from the health endpoint |
 | `HealthCheck` | `KubernetesProbeTypes` | `Readiness` | — | Kubernetes probe type for the health check tag |
-| `PhoneNumber` | `string` | — | ✓ | Registered Signal sender number (e.g. `"+49151..."`) |
+| `PhoneNumber` | `string` | — | ✓ | Registered Signal account; supply through a secret-backed provider |
 | `PhoneNumberDebug` | `string?` | `null` | — | Optional recipient number for debug/diagnostic messages ("Note to Self" feed) |
 | `SendTimeoutMs` | `int` | `180000` | — | Per-request timeout in milliseconds for `POST /v2/send` |
 | `ChannelCapacity` | `int` | `256` | — | Bounded capacity of the internal message channel (back-pressure when full) |
@@ -230,7 +263,7 @@ Registered via `IServiceCollection.AddSignalCli()`. Configuration section: `CasC
 | `InitialReconnectDelayMs` | `int` | `2000` | — | Initial backoff delay in milliseconds for WebSocket reconnection |
 | `MaxReconnectDelayMs` | `int` | `120000` | — | Maximum backoff delay in milliseconds for WebSocket reconnection |
 | `ReceiveStalenessTimeoutMs` | `int` | `0` | — | Max silent period (ms) on the receive stream before the watchdog logs an error and forces a reconnect; `0` disables it. Tune above your longest expected inbound gap to avoid false positives on quiet accounts |
-| `BasicAuthEnabled` | `bool` | `false` | — | Whether to attach HTTP Basic credentials to outgoing requests (cross-cluster access via ingress) |
+| `BasicAuthEnabled` | `bool` | `false` | — | Attach HTTP Basic credentials when the endpoint requires them |
 | `Username` | `string?` | `null` | — | Basic auth username, required when `BasicAuthEnabled` is set unless `ApiAuthConfig` supplies one |
 | `Password` | `string?` | `null` | — | Basic auth password, required when `BasicAuthEnabled` is set unless `ApiAuthConfig` supplies one |
 
@@ -238,7 +271,11 @@ Registered via `IServiceCollection.AddSignalCli()`. Configuration section: `CasC
 
 When the signal-cli REST API sits behind an authenticating reverse proxy, set `BasicAuthEnabled` and supply `Username` and `Password`. The credentials are applied to both the `HttpClient` and the JSON-RPC WebSocket handshake.
 
-If `Username` and `Password` are left unset, the library falls back to `CasCap:ApiAuthConfig`, which suits hosts that already bind a single set of ingress credentials for every API they call. When neither source yields credentials, registration throws an `InvalidOperationException` naming both configuration keys rather than failing later with an opaque `401`.
+If either credential is missing, resolution falls back to a registered `IOptions<ApiAuthConfig>`
+containing both values. Bind `CasCap:ApiAuthConfig` in the host when using that shared configuration;
+`AddSignalCli` does not bind it for you. If neither source has a complete pair, resolving the HTTP
+client or WebSocket transport throws `InvalidOperationException`. Use TLS outside trusted local
+development and store credentials in a secret-backed configuration provider.
 
 ## Configuration Examples
 
@@ -248,26 +285,28 @@ If `Username` and `Password` are left unset, the library falls back to `CasCap:A
 {
   "CasCap": {
     "SignalCliConfig": {
-      "BaseAddress": "http://signalcli.monitoring.svc.cluster.local",
-      "PhoneNumber": "+49151..."
+      "BaseAddress": "http://localhost:8080",
+      "PhoneNumber": "+10000000000"
     }
   }
 }
 ```
 
-### Fully configured
+The account is synthetic; replace it through a secret-backed provider.
+
+### Receive and health-check settings
 
 ```json
 {
   "CasCap": {
     "SignalCliConfig": {
       "TransportMode": "JsonRpc",
-      "BaseAddress": "http://signalcli.monitoring.svc.cluster.local",
+      "BaseAddress": "http://localhost:8080",
       "HealthCheckUri": "v1/about",
-    "HealthCheckExpectedHttpStatusCodes": [200, 204],
+      "HealthCheckExpectedHttpStatusCodes": [200, 204],
       "HealthCheck": "Readiness",
-      "PhoneNumber": "+49151...",
-      "PhoneNumberDebug": "+49151...",
+      "PhoneNumber": "+10000000000",
+      "PhoneNumberDebug": "+10000000000",
       "SendTimeoutMs": 180000,
       "ChannelCapacity": 256,
       "ReceivePollIntervalMs": 1000,
@@ -290,133 +329,28 @@ If `Username` and `Password` are left unset, the library falls back to `CasCap:A
 a separate named `HttpClient` with retries disabled: a probe is a point-in-time result, and the
 orchestrator already repeats it on its own schedule.
 
-Retries are limited to methods the server can safely process twice. A failed `POST` — sending a message, uploading an attachment — is **not** replayed, because the request may well have been delivered before the failure surfaced and a replay would send the message twice. Transient failures on those calls surface to the caller instead.
+Idempotent methods can be retried. POST and PATCH are retried only for failures indicating the request
+was not transmitted, not timeouts or server errors. In particular, a failed send may already have
+reached its recipient; do not blindly repeat it. `SendTimeoutMs` also sizes the REST client's resilience
+attempt and total timeout budgets.
 
-## Class Hierarchy
+## Service Architecture
 
-```mermaid
-classDiagram
-    direction LR
-
-    HttpClientBase <|-- SignalCliRestClientService
-    HttpEndpointCheckBase <|-- SignalCliConnectionHealthCheck
-    ISignalCliClient <|.. SignalCliRestClientService
-    ISignalCliReceiver <|.. SignalCliRestClientService
-    ISignalCliReceiver <|.. SignalCliJsonRpcClientService
-    SignalCliJsonRpcClientService ..> SignalCliRestClientService : delegates
-
-    class ISignalCliClient {
-        <<interface>>
-        +GetAbout(CancellationToken) SignalAbout?
-        +SendMessage(SignalMessageRequest, CancellationToken) SignalMessageResponse?
-        +ReceiveMessages(number, CancellationToken) SignalReceivedMessage[]?
-        +ListGroups(number, CancellationToken) SignalGroup[]?
-        +ListContacts(number, allRecipients, CancellationToken) SignalContact[]?
-    }
-
-    class ISignalCliReceiver {
-        <<interface>>
-        +ConnectAsync(CancellationToken) Task
-        +StreamMessagesAsync(CancellationToken) IAsyncEnumerable~SignalReceivedMessage~
-    }
-
-    class SignalCliRestClientService {
-        -SignalCliConfig _config
-        +GetAbout() SignalAbout?
-        +SendMessage(SignalMessageRequest) SignalMessageResponse?
-        +ReceiveMessages(number) SignalReceivedMessage[]?
-        +ListAccounts() string[]?
-        +ListGroups(number) SignalGroup[]?
-        +ListContacts(number) SignalContact[]?
-        +ListIdentities(number) SignalIdentity[]?
-        +ListLinkedDevices(number) SignalDevice[]?
-        +ListAttachments() string[]?
-        +ListStickerPacks(number) SignalStickerPack[]?
-        +SearchNumbers(number, numbers) SearchResult[]?
-        -GetAsync~T~(requestUri) T?
-        -PostAsync~T~(requestUri, body) T?
-        -PostBoolAsync(requestUri, body) bool
-        -PutAsync(requestUri, body) bool
-        -DeleteAsync(requestUri, body) bool
-        -DeleteAsync~T~(requestUri, body) T?
-    }
-
-    class SignalCliJsonRpcClientService {
-        -SignalCliRestClientService _restClient
-        -ClientWebSocket? _webSocket
-        +ConnectAsync(CancellationToken) Task
-        +StreamMessagesAsync(CancellationToken) IAsyncEnumerable~SignalReceivedMessage~
-        -ReceiveLoopWithReconnectAsync(CancellationToken) Task
-        +BuildWebSocketUri(baseAddress, phoneNumber)$ Uri
-    }
-
-    class SignalCliConnectionHealthCheck {
-        +Name$ string
-    }
-
-    class SignalCliConfig {
-        +TransportMode SignalCliTransport
-        +BaseAddress string
-        +HealthCheckUri string
-        +HealthCheck KubernetesProbeTypes
-        +SendTimeoutMs int
-        +PhoneNumber string
-        +PhoneNumberDebug string?
-        +ChannelCapacity int
-        +ReceivePollIntervalMs int
-        +MaxReconnectAttempts int
-        +InitialReconnectDelayMs int
-        +MaxReconnectDelayMs int
-        +BasicAuthEnabled bool
-        +Username string?
-        +Password string?
-    }
-
-    SignalCliRestClientService ..> SignalCliConfig : reads
-    SignalCliJsonRpcClientService ..> SignalCliConfig : reads
-    SignalCliConnectionHealthCheck ..> SignalCliConfig : reads
-```
-
-### DI Registration Flow
+All modes use HTTP for sends and management. Only the receive transport changes:
 
 ```mermaid
 flowchart LR
-    A["AddSignalCli()"] --> B["Bind SignalCliConfig"]
-    A --> C["Register HttpClient"]
-    A --> J["ISignalCliClient \u2192 SignalCliRestClientService"]
-    A --> D{"TransportMode?"}
-    A --> E["Register SignalCliConnectionHealthCheck"]
-    D -->|Normal / Native| F["INotifier + ISignalCliReceiver \u2192 SignalCliRestClientService"]
-    D -->|JsonRpc / JsonRpcNative| G["INotifier + ISignalCliReceiver \u2192 SignalCliJsonRpcClientService"]
-    G --> H["delegates non-receive ops"]
-    H --> F2["SignalCliRestClientService"]
-    C --> I["IHttpClientFactory"]
-    I --> F
-    I --> G
-    I --> E
+    Host["Consuming host"] --> Client["ISignalCliClient"]
+    Client --> HTTP["REST client"]
+    HTTP --> Server["signal-cli REST API"]
+    Host --> Receiver["ISignalCliReceiver"]
+    Receiver --> Mode{"TransportMode"}
+    Mode -->|Normal or Native| Poll["HTTP polling"]
+    Mode -->|JsonRpc or JsonRpcNative| WebSocket["Persistent WebSocket"]
+    Poll --> Server
+    WebSocket --> Server
 ```
-
-## Dependencies
-
-### NuGet packages
-
-| Package | Purpose |
-| --- | --- |
-| [Microsoft.Extensions.Http](https://www.nuget.org/packages/microsoft.extensions.http) | `HttpClient` factory |
-| [Microsoft.Extensions.Diagnostics.HealthChecks](https://www.nuget.org/packages/microsoft.extensions.diagnostics.healthchecks) | Health check abstractions |
-| [CasCap.Common.Configuration](https://www.nuget.org/packages/cascap.common.configuration) | Configuration binding helpers |
-| [CasCap.Common.Extensions](https://www.nuget.org/packages/cascap.common.extensions) | Shared extension helpers |
-| [CasCap.Common.Logging](https://www.nuget.org/packages/cascap.common.logging) | Structured logging helpers |
-| [CasCap.Common.Net](https://www.nuget.org/packages/cascap.common.net) | HTTP client base (`HttpClientBase`) |
-| [CasCap.Common.Extensions.Diagnostics.HealthChecks](https://www.nuget.org/packages/cascap.common.extensions.diagnostics.healthchecks) | Kubernetes probe tag helpers |
-| [CasCap.Common.Services](https://www.nuget.org/packages/cascap.common.services) | Shared service utilities |
-
-### Project references
-
-| Project | Purpose |
-| --- | --- |
-| `CasCap.Common.Configuration` | Configuration binding helpers |
 
 ## License
 
-This project is released under the [MIT License](../../LICENSE). See the [LICENSE](../../LICENSE) file for details.
+Released under the [MIT License](https://github.com/f2calv/CasCap.Api.SignalCli/blob/main/LICENSE).
