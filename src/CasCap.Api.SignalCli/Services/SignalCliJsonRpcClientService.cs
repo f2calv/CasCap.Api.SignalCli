@@ -444,21 +444,16 @@ public sealed class SignalCliJsonRpcClientService(
                     SignalCliTelemetry.Frames.Add(1,
                         new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "message"));
                     if (logger.IsEnabled(LogLevel.Debug))
-                        logger.LogDebug("{ClassName} wrote message from {Sender} to channel",
-                            nameof(SignalCliJsonRpcClientService),
-                            message.Envelope.Source ?? message.Envelope.SourceNumber ?? "unknown");
+                        logger.LogDebug("{ClassName} wrote message to channel",
+                            nameof(SignalCliJsonRpcClientService));
                 }
                 else
                 {
                     SignalCliTelemetry.Frames.Add(1,
                         new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "unrecognized"));
                     if (logger.IsEnabled(LogLevel.Debug))
-                    {
-                        stream.Position = 0;
-                        var rawText = Encoding.UTF8.GetString(stream.GetBuffer(), 0, (int)stream.Length);
-                        logger.LogDebug("{ClassName} received WebSocket frame that could not be deserialized: {RawFrame}",
-                            nameof(SignalCliJsonRpcClientService), rawText);
-                    }
+                        logger.LogDebug("{ClassName} received a {FrameLength}-byte WebSocket frame that could not be deserialized",
+                            nameof(SignalCliJsonRpcClientService), stream.Length);
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
