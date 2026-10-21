@@ -1,7 +1,7 @@
 # REST Client Requests
 
-These request collections exercise the Signal CLI client and ASP.NET Core controller through the VS
-Code REST Client extension.
+Manual HTTP collections for the signal-cli REST API and its optional ASP.NET Core query controller,
+using the VS Code REST Client extension.
 
 ## Setup
 
@@ -17,5 +17,10 @@ Code REST Client extension.
 | --- | --- |
 | `signalcli-client.http` | Direct signal-cli REST API operations |
 | `signalcli-controller.http` | ASP.NET Core controller operations |
+
+`SIGNAL_CLI_BASE_URL`, `SIGNAL_CLI_AUTH` and `SIGNAL_CLI_PHONE_NUMBER` target the upstream API.
+The controller collection uses `HAUS_BASE_URL` and `HAUS_API_AUTH` to target your own ASP.NET Core host;
+those variable names do not require a particular consuming application. Authentication variables
+hold the credential portion of a Basic authorization header, not an entire header. Treat them as secrets.
 
 Sending or receiving messages has external side effects. Review each request before executing it.

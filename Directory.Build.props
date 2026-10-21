@@ -14,7 +14,7 @@
     <Authors>Alex Vincent</Authors>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageProjectUrl>https://github.com/f2calv/CasCap.Api.SignalCli</PackageProjectUrl>
-    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>See https://github.com/f2calv/CasCap.Api.SignalCli/releases</PackageReleaseNotes>
     <IncludeSymbols>true</IncludeSymbols>

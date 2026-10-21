@@ -1,22 +1,26 @@
 # CasCap.Api.SignalCli.Tests
 
-Integration and unit tests for the Signal messenger library ([CasCap.Api.SignalCli](../CasCap.Api.SignalCli)). The unit tests run against a stubbed `HttpMessageHandler` and need no signal-cli server or credentials. The integration tests exercise `SignalCliRestClientService` against a running [signal-cli REST API](https://bbernhard.github.io/signal-cli-rest-api/) instance.
+Credential-free transport, registration and diagnostics tests for
+[CasCap.Api.SignalCli](../CasCap.Api.SignalCli/README.md), plus integration cases requiring a dedicated
+signal-cli REST API account. All tests target .NET 10.
 
 ## Tests
 
 | Class | Folder | Methods | Test Cases |
 | --- | --- | --- | --- |
-| `SignalCliRestClientServiceUnitTests` | Unit | 15 | 17 |
+| `SignalCliRestClientServiceUnitTests` | Unit | 16 | 18 |
 | `SignalCliConnectionHealthCheckUnitTests` | Unit | 1 | 1 |
 | `SignalGroupUnitTests` | Unit | 1 | 5 |
-| `SignalCliRegistrationUnitTests` | Unit | 10 | 16 |
+| `SignalCliRegistrationUnitTests` | Unit | 12 | 18 |
 | `SignalCliJsonRpcClientServiceUnitTests` | Unit | 10 | 13 |
 | `SignalCliTelemetryUnitTests` | Unit | 1 | 1 |
+| `SignalCliSendLoggingTests` | Unit | 1 | 3 |
 | `SignalCliRestClientServiceTests` | Integration | 51 | 51 |
 | `SignalCliJsonRpcClientServiceTests` | Integration | 4 | 4 |
-| **Total** | | **92** | **107** |
+| **Total** | | **97** | **114** |
 
-The 53 unit test cases are the credential-free subset CI runs.
+These are source-declared counts, not execution results. The credential-free subset contains
+59 expanded cases; the 55 declared integration cases include the 17 static skips below.
 
 ## Trait Categories
 
@@ -26,17 +30,22 @@ The 53 unit test cases are the credential-free subset CI runs.
 | `Integration` | Tests requiring a running signal-cli REST API instance |
 | `WebSocket` | Self-contained unit tests for WebSocket/JSON-RPC logic |
 
+Integration tests additionally use `Feature` values `General`, `Messaging`, `Registration`, `Accounts`,
+`Contacts`, `Devices`, `Groups`, `Identities`, `Attachments`, `Profile`, `Search` and `StickerPacks`.
+`Transport=Polling` marks the HTTP receive case that is incompatible with JSON-RPC server mode.
+The send-logging cases have no trait; excluding `Category=Integration` includes them.
+
 ## Skipped Tests
 
 | Skip Reason | Count |
 | --- | --- |
 | Requires signal-cli REST API running in json-rpc mode | 3 |
-| Requires a dedicated test phone number | 2 |
+| Requires a dedicated registration number, or a number and verification token | 2 |
 | Destructive or cannot be undone | 4 |
+| Requires a linked device to remove | 1 |
 | Requires a second phone number | 2 |
 | Requires a real challenge token / device-link URI / invite link / pack ID | 4 |
 | Requires an untrusted identity to trust | 1 |
-| VerifyNumber requires dedicated test phone number and token | 1 |
 | **Total** | **17** |
 
 ## File Structure
@@ -50,22 +59,27 @@ CasCap.Api.SignalCli.Tests/
 ├── xunit.runner.json
 └── Tests/
     ├── Unit/
+    │   ├── RecordedCall.cs
     │   ├── SignalCliConnectionHealthCheckUnitTests.cs
     │   ├── SignalGroupUnitTests.cs
     │   ├── SignalCliJsonRpcClientServiceUnitTests.cs
     │   ├── SignalCliRegistrationUnitTests.cs
     │   ├── SignalCliRestClientServiceUnitTests.cs
+    │   ├── SignalCliSendLoggingTests.cs
     │   ├── SignalCliTelemetryUnitTests.cs
+    │   ├── StubHttpClientFactory.cs
     │   └── StubHttpMessageHandler.cs
     └── Integration/
         ├── TestBase.cs
+        ├── SignalCliTraits.cs
         ├── SignalCliRestClientServiceTests.cs
         └── SignalCliJsonRpcClientServiceTests.cs
 ```
 
 ## Prerequisites
 
-The unit tests have no prerequisites. The integration tests require:
+Use the .NET 10 SDK and run commands from the repository root. Unit tests need no external service.
+Integration tests require:
 
 * A running signal-cli REST API accessible from the test host
 * A registered test account
@@ -75,7 +89,7 @@ The unit tests have no prerequisites. The integration tests require:
 Start the repository's pinned container and configure the test account without committing it:
 
 ```powershell
-docker compose up --detach
+docker compose up --detach --wait signalcli
 dotnet user-secrets --project src/CasCap.Api.SignalCli.Tests set "CasCap:SignalCliConfig:PhoneNumber" "+10000000000"
 dotnet user-secrets --project src/CasCap.Api.SignalCli.Tests set "SignalCliTests:ExistingGroupName" "SignalCli integration"
 ```
@@ -88,25 +102,18 @@ The credential-free subset, matching CI:
 dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
 ```
 
-Everything, including the tests that need a live server:
+Against the repository's JSON-RPC Compose service, additionally exclude the HTTP-polling-only case:
 
 ```bash
-dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj
+dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Transport=Polling
 ```
 
-## Dependencies
-
-### Project references
-
-| Project | Purpose |
-| --- | --- |
-| `CasCap.Api.SignalCli` | Library under test |
-| `CasCap.Common.Configuration` | Configuration binding |
-| `CasCap.Common.Extensions` | Shared extension helpers |
-| `CasCap.Common.Logging` | xUnit logging integration |
-| `CasCap.Common.Net` | HTTP helpers |
-| `CasCap.Common.Testing` | `AddXUnitLogging` and test utilities |
+This command includes live integration cases. They can send messages and mutate account, contact,
+group or attachment state; use only a disposable test account and review the cases first.
+Configuration loads `appsettings.Test.json`, optional `appsettings.Local.Test.json`, User Secrets,
+then environment variables. A missing account or service is not an automatic skip for active
+integration cases. The sample and tests share their User Secrets store.
 
 ## License
 
-This project is released under [The Unlicense](../../LICENSE). See the [LICENSE](../../LICENSE) file for details.
+Released under the [MIT License](../../LICENSE).

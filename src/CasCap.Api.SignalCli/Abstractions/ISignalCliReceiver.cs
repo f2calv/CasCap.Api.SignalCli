@@ -29,7 +29,7 @@ public interface ISignalCliReceiver
     /// rather than on the first message.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task ConnectAsync(CancellationToken cancellationToken = default);
+    public Task ConnectAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Streams inbound messages until the token is cancelled.
@@ -40,5 +40,5 @@ public interface ISignalCliReceiver
     /// compete for messages rather than each receiving a copy.
     /// </remarks>
     /// <param name="cancellationToken">Cancellation token that ends the stream.</param>
-    IAsyncEnumerable<SignalReceivedMessage> StreamMessagesAsync(CancellationToken cancellationToken = default);
+    public IAsyncEnumerable<SignalReceivedMessage> StreamMessagesAsync(CancellationToken cancellationToken = default);
 }

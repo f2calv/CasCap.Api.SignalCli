@@ -7,42 +7,38 @@ This .NET 10 worker verifies a local signal-cli REST API and continuously consum
 Start the pinned signal-cli REST API container from the repository root:
 
 ```powershell
-docker compose up --detach
+docker compose up --detach --wait signalcli
 ```
 
 Register an account or link the container as a Signal device by following the
-[signal-cli REST API account guide](https://github.com/bbernhard/signal-cli-rest-api/blob/master/doc/REGISTER_ACCOUNT.md).
+[signal-cli REST API setup guide](https://github.com/bbernhard/signal-cli-rest-api#getting-started).
 The named Docker volume preserves that account across container restarts.
+
+Stop other receivers for this account before running the sample: it consumes the live inbound
+stream rather than observing an independent copy.
 
 Set the registered account number without committing it:
 
 ```powershell
 dotnet user-secrets --project samples/GenericHost set "CasCap:SignalCliConfig:PhoneNumber" "+10000000000"
+$env:DOTNET_ENVIRONMENT = "Development"
 dotnet run --project samples/GenericHost
 ```
 
 The worker reports API version information and the type of each received envelope. For data messages it reports whether
-text is present and the number of attachments. Attachment metadata is safe, redacted metadata; attachments with an id
+text is present and the number of attachments. Attachment metadata includes media type, declared size
+and whether a filename or identifier is present; attachments with an id
 are downloaded through the library so the sample also demonstrates the binary attachment API and reports only whether
 the download succeeded and its byte count. It never logs sender identities, filenames, message content, or attachment
 content, and it never deletes attachments or transcribes audio.
 
 ## Configuration
 
-The sample reads `CasCap:SignalCliConfig` from `appsettings.json`, .NET User Secrets, and environment variables. See the
+The Generic Host loads JSON, environment-variable and command-line configuration, and .NET User Secrets
+in the Development environment. The example sets that environment explicitly; outside Development,
+supply the account through another provider, such as `CasCap__SignalCliConfig__PhoneNumber`. See the
 [library configuration reference](../../src/CasCap.Api.SignalCli/README.md#configuration) for every option.
 
-## Dependencies
-
-### NuGet packages
-
-| Package | Purpose |
-| --- | --- |
-| `Microsoft.Extensions.Configuration.UserSecrets` | Reads local `secrets.json` outside the Development environment |
-| `Microsoft.Extensions.Hosting` | Configuration, dependency injection, logging, and worker lifetime |
-
-### Project references
-
-| Project | Purpose |
-| --- | --- |
-| `CasCap.Api.SignalCli` | Typed REST and WebSocket Signal client |
+`TransportMode` defaults to `JsonRpc`, matching the repository's Compose service. The sample and test
+project share a User Secrets store. Stop the container with `docker compose down`; do not add
+`--volumes` unless you intend to remove the stored account.

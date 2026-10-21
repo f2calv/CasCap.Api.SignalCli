@@ -1,18 +1,21 @@
 # CasCap.Api.SignalCli.AspNetCore
 
-ASP.NET Core integration for [CasCap.Api.SignalCli](https://www.nuget.org/packages/cascap.api.signalcli). Provides `SignalCliController`, a versioned, read-only MVC controller that surfaces signal-cli queries over your own Web API.
-
-This lives in a separate package so that worker services, console apps and daemons can consume the Signal client without taking a dependency on MVC or API versioning.
+Authenticated, read-only Signal query endpoints for .NET 10 ASP.NET Core applications. The package
+exposes `SignalCliController` over [CasCap.Api.SignalCli](https://www.nuget.org/packages/CasCap.Api.SignalCli)
+without adding MVC dependencies to worker applications.
 
 ## Installation
 
 ```bash
-dotnet add package CasCap.Api.SignalCli.AspNetCore
+dotnet package add CasCap.Api.SignalCli.AspNetCore
 ```
 
 ## Controller
 
-`SignalCliController` is a thin pass-through over `ISignalCliClient`. Every action flows the request abort token into the underlying call, and maps a `null` result to `404 Not Found` rather than `200 OK` with a null body.
+`SignalCliController` is a thin pass-through over
+[`ISignalCliClient`](https://github.com/f2calv/CasCap.Api.SignalCli/blob/main/src/CasCap.Api.SignalCli/Abstractions/ISignalCliClient.cs).
+Every action flows the request abort token into the underlying call, and maps a `null` result to
+`404 Not Found` rather than `200 OK` with a null body.
 
 | Method | Route | Description |
 | --- | --- | --- |
@@ -30,9 +33,14 @@ The controller carries `[Authorize]`. Configure an authentication scheme in the 
 
 ## Registration
 
-The controller lives in its own assembly, so register it as an application part alongside the Signal client:
+In an ASP.NET Core host with its authentication scheme and authorization services already configured,
+register the controller assembly, MVC API versioning and the Signal client:
 
 ```csharp
+using Asp.Versioning;
+using CasCap.Controllers;
+using CasCap.Extensions;
+
 builder.Services.AddSignalCli(builder.Configuration);
 
 builder.Services.AddControllers()
@@ -42,27 +50,22 @@ builder.Services.AddApiVersioning(options =>
 {
     options.DefaultApiVersion = new ApiVersion(1.0);
     options.AssumeDefaultVersionWhenUnspecified = true;
-});
+}).AddMvc();
+
+var app = builder.Build();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+await app.RunAsync();
 ```
 
-`AddSignalCli` registers `ISignalCliClient`, which is the controller's only dependency.
+`builder` is the host's `WebApplicationBuilder`. `AddSignalCli` supplies `ISignalCliClient`, the
+controller's only constructor dependency. It requires the same account and endpoint settings as the
+[core package configuration](https://github.com/f2calv/CasCap.Api.SignalCli/blob/main/src/CasCap.Api.SignalCli/README.md#configuration).
 
-## Dependencies
-
-### NuGet packages
-
-| Package | Purpose |
-| --- | --- |
-| [Asp.Versioning.Mvc](https://www.nuget.org/packages/asp.versioning.mvc) | API versioning for the controller route template |
-
-The project also takes a `Microsoft.AspNetCore.App` framework reference for `ControllerBase`, routing and the typed result helpers.
-
-### Project references
-
-| Project | Purpose |
-| --- | --- |
-| `CasCap.Api.SignalCli` | `ISignalCliClient` and the Signal DTOs |
+The controller does not select an authentication scheme for you. Do not remove `[Authorize]` to work
+around missing host authentication.
 
 ## License
 
-This project is released under [The Unlicense](../../LICENSE). See the [LICENSE](../../LICENSE) file for details.
+Released under the [MIT License](https://github.com/f2calv/CasCap.Api.SignalCli/blob/main/LICENSE).
