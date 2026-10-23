@@ -5,7 +5,7 @@
 @phoneNumber = {{$dotenv SIGNAL_CLI_PHONE_NUMBER}}
 
 ### Send a message to self (mirrors SendMessage_ToSelf_ReturnsTimestamp)
-# @note
+# @note Sends a real Signal message. Confirm account and content; do not retry an uncertain send.
 POST {{baseUrl}}/v2/send
 Content-Type: application/json
 Authorization: Basic {{$dotenv SIGNAL_CLI_AUTH}}
@@ -27,6 +27,7 @@ GET {{baseUrl}}/v1/configuration
 Authorization: Basic {{$dotenv SIGNAL_CLI_AUTH}}
 
 ### Receive pending messages (mirrors ReceiveMessages_ReturnsMessages)
+# @note Drains queued messages from the account inbox and can compete with its receive owner. Obtain explicit approval; GET is not read-only here.
 GET {{baseUrl}}/v1/receive/{{phoneNumber}}
 Authorization: Basic {{$dotenv SIGNAL_CLI_AUTH}}
 
