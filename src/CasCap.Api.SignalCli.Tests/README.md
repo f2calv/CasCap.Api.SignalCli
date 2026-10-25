@@ -55,6 +55,7 @@ CasCap.Api.SignalCli.Tests/
 ├── CasCap.Api.SignalCli.Tests.csproj
 ├── GlobalUsings.cs
 ├── README.md
+├── appsettings.json
 ├── appsettings.Test.json
 ├── xunit.runner.json
 └── Tests/
@@ -86,7 +87,8 @@ Integration tests require:
 * `CasCap:SignalCliConfig:PhoneNumber` supplied through User Secrets or an environment variable
 * Optional `SignalCliTests:ExistingGroupName` for tests that send to an existing group
 
-Start the repository's pinned container and configure the test account without committing it:
+Start the repository's [Compose service](../../docker-compose.yml) and configure the test account
+without committing it:
 
 ```powershell
 docker compose up --detach --wait signalcli
@@ -110,8 +112,10 @@ dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.
 
 This command includes live integration cases. They can send messages and mutate account, contact,
 group or attachment state; use only a disposable test account and review the cases first.
-Configuration loads `appsettings.Test.json`, optional `appsettings.Local.Test.json`, User Secrets,
-then environment variables. A missing account or service is not an automatic skip for active
+Configuration uses the shared `Test`-environment chain: base settings, optional
+`appsettings.Test.json` and local overrides, User Secrets, then environment variables.
+A missing test file is allowed when another provider supplies the required settings.
+A missing account or service is not an automatic skip for active
 integration cases. The sample and tests share their User Secrets store.
 
 ## License

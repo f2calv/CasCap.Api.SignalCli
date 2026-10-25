@@ -13,8 +13,7 @@
 
   <ItemGroup>
     <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="appsettings.Test.json" CopyToOutputDirectory="Always" />
-    <Content Include="appsettings.Local.Test.json" CopyToOutputDirectory="Always" Condition="Exists('appsettings.Local.Test.json')" />
+    <None Update="appsettings*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
