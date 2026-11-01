@@ -56,7 +56,7 @@
       "type": "process",
       "args": [
         "publish",
-        "${workspaceFolder}/samples/GenericHost/GenericHost.csproj",
+        "${workspaceFolder}/samples/CasCap.Api.SignalCli.GenericHost.SampleApp/CasCap.Api.SignalCli.GenericHost.SampleApp.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
@@ -71,7 +71,7 @@
         "watch",
         "run",
         "--project",
-        "${workspaceFolder}/samples/GenericHost/GenericHost.csproj",
+        "${workspaceFolder}/samples/CasCap.Api.SignalCli.GenericHost.SampleApp/CasCap.Api.SignalCli.GenericHost.SampleApp.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],

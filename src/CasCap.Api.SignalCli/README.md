@@ -334,7 +334,7 @@ was not transmitted, not timeouts or server errors. In particular, a failed send
 reached its recipient; do not blindly repeat it. `SendTimeoutMs` also sizes the REST client's resilience
 attempt and total timeout budgets.
 
-## Service Architecture
+## Components
 
 All modes use HTTP for sends and management. Only the receive transport changes:
 

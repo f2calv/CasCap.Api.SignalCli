@@ -1,4 +1,4 @@
-# CasCap.Api.SignalCli Generic Host Sample
+# CasCap.Api.SignalCli.GenericHost.SampleApp
 
 This .NET 10 worker verifies a local signal-cli REST API and continuously consumes its receive stream.
 
@@ -20,9 +20,9 @@ stream rather than observing an independent copy.
 Set the registered account number without committing it:
 
 ```powershell
-dotnet user-secrets --project samples/GenericHost set "CasCap:SignalCliConfig:PhoneNumber" "+10000000000"
+dotnet user-secrets --project .\samples\CasCap.Api.SignalCli.GenericHost.SampleApp set "CasCap:SignalCliConfig:PhoneNumber" "+10000000000"
 $env:DOTNET_ENVIRONMENT = "Development"
-dotnet run --project samples/GenericHost
+dotnet run --project .\samples\CasCap.Api.SignalCli.GenericHost.SampleApp
 ```
 
 The worker reports API version information and the type of each received envelope. For data messages it reports whether

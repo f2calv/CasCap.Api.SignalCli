@@ -29,7 +29,7 @@
 
     <!-- One local secret store shared by the sample and integration tests. Deliberately not applied
       to the shipped libraries, which read no configuration of their own. -->
-  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GenericHost' OR $(MSBuildProjectName.EndsWith('.Tests'))">
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'CasCap.Api.SignalCli.GenericHost.SampleApp' OR $(MSBuildProjectName.EndsWith('.Tests'))">
     <UserSecretsId>890bd946-ed0b-4c13-abdf-070bc0b3fabc</UserSecretsId>
   </PropertyGroup>
 

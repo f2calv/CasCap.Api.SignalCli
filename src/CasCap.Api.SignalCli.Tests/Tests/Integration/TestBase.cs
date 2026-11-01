@@ -21,6 +21,7 @@ public abstract class TestBase : IAsyncDisposable
 
     /// <summary>The DI service provider (exposed for sub-service resolution in derived tests).</summary>
     protected readonly ServiceProvider _serviceProvider;
+    private readonly ConfigurationManager _configuration = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TestBase"/> class.
@@ -29,21 +30,16 @@ public abstract class TestBase : IAsyncDisposable
     {
         _output = output;
 
-        var configuration = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.Test.json", optional: false)
-            .AddJsonFile("appsettings.Local.Test.json", optional: true)
-            .AddUserSecrets<TestBase>()
-            .AddEnvironmentVariables()
-            .Build();
+        _configuration.AddStandardConfiguration("Test", typeof(TestBase).Assembly);
 
         var services = new ServiceCollection()
-            .AddSingleton<IConfiguration>(configuration)
+            .AddSingleton<IConfiguration>(_configuration)
             .AddXUnitLogging(output);
 
-        _config = services.AddAndGetCasCapConfiguration<SignalCliConfig>(configuration);
-        services.AddSignalCli(configuration);
+        _config = services.AddAndGetCasCapConfiguration<SignalCliConfig>(_configuration);
+        services.AddSignalCli(_configuration);
 
-        _groupName = configuration["SignalCliTests:ExistingGroupName"] ?? string.Empty;
+        _groupName = _configuration["SignalCliTests:ExistingGroupName"] ?? string.Empty;
 
         _serviceProvider = services.BuildServiceProvider();
         _svc = _serviceProvider.GetRequiredService<SignalCliRestClientService>();
@@ -53,6 +49,7 @@ public abstract class TestBase : IAsyncDisposable
     public virtual async ValueTask DisposeAsync()
     {
         await _serviceProvider.DisposeAsync();
+        _configuration.Dispose();
         GC.SuppressFinalize(this);
     }
 }

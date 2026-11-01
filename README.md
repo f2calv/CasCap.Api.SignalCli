@@ -66,7 +66,7 @@ source. Exporter configuration remains the consuming host's responsibility.
 
 ## Local Sample
 
-The [Generic Host sample](samples/GenericHost/README.md) runs against the pinned signal-cli REST API in
+The [Generic Host SampleApp](samples/CasCap.Api.SignalCli.GenericHost.SampleApp/README.md) runs against the local signal-cli REST API in
 [`docker-compose.yml`](docker-compose.yml). It verifies the API and consumes one long-lived receive stream without logging
 sender identities or message content. Attachment metadata and downloaded byte counts are reported without logging
 filenames or attachment content.

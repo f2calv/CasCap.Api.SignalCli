@@ -14,7 +14,7 @@
     <Project Path="../CasCap.Common/src/CasCap.Common.Testing/CasCap.Common.Testing.csproj" />
   </Folder>
   <Folder Name="/CasCap.Api.SignalCli/Samples/">
-    <Project Path="samples/GenericHost/GenericHost.csproj" />
+    <Project Path="samples/CasCap.Api.SignalCli.GenericHost.SampleApp/CasCap.Api.SignalCli.GenericHost.SampleApp.csproj" />
   </Folder>
   <Folder Name="/CasCap.Api.SignalCli/">
     <Project Path="src/CasCap.Api.SignalCli.AspNetCore/CasCap.Api.SignalCli.AspNetCore.csproj" />
