@@ -121,6 +121,15 @@ signatures, including poll and account-settings operations.
 
 Every method returns `null` or `false` on failure and logs the cause; failures are not thrown. The exception is caller-requested cancellation, which propagates as `OperationCanceledException` so an abandoned call is never mistaken for an API error.
 
+Logs name only the failed operation and exception, never the request URI, account or recipient
+numbers, group names or identifiers, or server error bodies. Successful group and poll creation logs
+at Debug. Repeated receive polling logs the first failure as a Warning, later consecutive failures at
+Debug and one Information line on recovery. On the WebSocket transports the first retry of an
+outage is a Warning, further retries are Debug, a reconnection logs one Information line with the
+attempt count, and exhausting the attempts logs one Error. The initial connection logs only its first
+failure; when its attempts are exhausted the final exception propagates to the caller without an
+additional log.
+
 `SignalCliRestClientService` is the `HttpClient`-backed implementation:
 
 ### General

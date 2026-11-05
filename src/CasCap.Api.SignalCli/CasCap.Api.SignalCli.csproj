@@ -6,7 +6,7 @@
 
   <PropertyGroup>
     <IsPackable>true</IsPackable>
-    <Description>Typed .NET client for the signal-cli REST API with REST polling and JSON-RPC WebSocket transports, webhook endpoints, health checks, and INotifier integration.</Description>
+    <Description>Typed .NET client for the signal-cli REST API with REST polling and JSON-RPC WebSocket transports, health checks, and INotifier integration.</Description>
     <PackageTags>signal,signal-cli,messaging,rest-api,websocket,json-rpc,notifications</PackageTags>
   </PropertyGroup>
 

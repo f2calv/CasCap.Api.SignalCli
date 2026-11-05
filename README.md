@@ -17,6 +17,31 @@ persistent JSON-RPC WebSocket receive stream, with optional ASP.NET Core query e
 | [CasCap.Api.SignalCli](src/CasCap.Api.SignalCli/README.md) | REST client, receive transports, health check and DI registration | [![NuGet version][CasCap.Api.SignalCli-badge]][CasCap.Api.SignalCli-url] |
 | [CasCap.Api.SignalCli.AspNetCore](src/CasCap.Api.SignalCli.AspNetCore/README.md) | Authenticated, versioned MVC query controller | [![NuGet version](https://img.shields.io/nuget/v/CasCap.Api.SignalCli.AspNetCore)](https://www.nuget.org/packages/CasCap.Api.SignalCli.AspNetCore) |
 
+## Dependency Graph
+
+The optional controller package depends on the core client, not the reverse. Arrows show direct
+package references; Microsoft framework dependencies and test-only packages are omitted.
+
+```mermaid
+graph LR
+    mvc["CasCap.Api.SignalCli.AspNetCore"] --> core["CasCap.Api.SignalCli"]
+    mvc --> versioning["Asp.Versioning.Mvc"]
+    core --> configuration["Common.Configuration"]
+    core --> extensions["Common.Extensions"]
+    core --> health["Common.Extensions.Diagnostics.HealthChecks"]
+    core --> logging["Common.Logging"]
+    core --> net["Common.Net"]
+    core --> services["Common.Services"]
+    classDef owned fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
+    classDef published fill:#dcfce7,stroke:#15803d,color:#14532d
+    class mvc,core owned
+    class versioning,configuration,extensions,health,logging,net,services published
+```
+
+Blue nodes are packages in this repository; green nodes are external packages. Shared-library labels
+omit the `CasCap.` prefix. See the [transport flow](src/CasCap.Api.SignalCli/README.md#components)
+for HTTP polling versus WebSocket reception.
+
 ## Quick Start
 
 ```powershell
@@ -73,11 +98,16 @@ filenames or attachment content.
 
 ## Development
 
-With the .NET 10 SDK, run the credential-free subset:
+With the .NET 10 SDK, build against published dependencies and run the credential-free subset from
+the repository root:
 
 ```powershell
-dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
+dotnet build .\CasCap.Api.SignalCli.Release.slnx --configuration Release
+dotnet test --project .\src\CasCap.Api.SignalCli.Tests\CasCap.Api.SignalCli.Tests.csproj --configuration Release --filter-not-trait Category=Integration
 ```
+
+Debug builds instead use an adjacent [CasCap.Common checkout](https://github.com/f2calv/CasCap.Common).
+Restore with the intended configuration; Debug assets do not validate the Release package graph.
 
 Integration tests require a dedicated registered account and can send messages or change remote
 state. See the [test README](src/CasCap.Api.SignalCli.Tests/README.md) for prerequisites, exclusions and

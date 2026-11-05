@@ -60,8 +60,8 @@ public sealed class SignalCliJsonRpcClientService(
         });
 
         if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation("{ClassName} initialized, transport={Transport}, baseAddress={BaseAddress}, channelCapacity={ChannelCapacity}",
-                nameof(SignalCliJsonRpcClientService), config.TransportMode, config.BaseAddress, config.ChannelCapacity);
+            logger.LogInformation("{ClassName} initialized, transport={Transport}, channelCapacity={ChannelCapacity}",
+                nameof(SignalCliJsonRpcClientService), config.TransportMode, config.ChannelCapacity);
 
         return channel;
     }
@@ -96,8 +96,8 @@ public sealed class SignalCliJsonRpcClientService(
                         new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "success"));
 
                     if (logger.IsEnabled(LogLevel.Information))
-                        logger.LogInformation("{ClassName} WebSocket connected for {PhoneNumber}",
-                            nameof(SignalCliJsonRpcClientService), options.Value.PhoneNumber.MaskPhoneNumber());
+                        logger.LogInformation("{ClassName} WebSocket connected, FailedAttempts={FailedAttempts}",
+                            nameof(SignalCliJsonRpcClientService), attempt);
 
                     _receiveLoopTask = Task.Run(() => ReceiveLoopWithReconnectAsync(_wsCts.Token), _wsCts.Token);
                     StartStalenessWatchdog();
@@ -113,19 +113,12 @@ public sealed class SignalCliJsonRpcClientService(
                         new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "initial"),
                         new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "failure"));
                     attempt++;
+                    //The caller receives the final exception, so exhausting the attempts is not logged here.
                     if (attempt > options.Value.MaxReconnectAttempts)
-                    {
-                        logger.LogError(ex, "{ClassName} exceeded {MaxAttempts} initial connection attempts for {PhoneNumber}",
-                            nameof(SignalCliJsonRpcClientService), options.Value.MaxReconnectAttempts, options.Value.PhoneNumber.MaskPhoneNumber());
                         throw;
-                    }
 
-                    var delay = TimeSpan.FromTicks(Math.Min(
-                        TimeSpan.FromMilliseconds(options.Value.InitialReconnectDelayMs).Ticks * (1L << Math.Min(attempt - 1, 10)),
-                        TimeSpan.FromMilliseconds(options.Value.MaxReconnectDelayMs).Ticks));
-
-                    logger.LogWarning(ex, "{ClassName} initial connection attempt {Attempt}/{MaxAttempts} failed, retrying in {Delay}",
-                        nameof(SignalCliJsonRpcClientService), attempt, options.Value.MaxReconnectAttempts, delay);
+                    var delay = GetReconnectDelay(attempt);
+                    LogInitialConnectionFailure(ex, attempt, delay);
 
                     _webSocket?.Dispose();
                     _webSocket = null;
@@ -190,8 +183,8 @@ public sealed class SignalCliJsonRpcClientService(
         if (messages.Count > 0)
         {
             if (logger.IsEnabled(LogLevel.Debug))
-                logger.LogDebug("{ClassName} drained {Count} message(s) for {Account}",
-                    nameof(SignalCliJsonRpcClientService), messages.Count, account);
+                logger.LogDebug("{ClassName} drained {Count} message(s)",
+                    nameof(SignalCliJsonRpcClientService), messages.Count);
         }
 
         return messages.Count > 0 ? messages.ToArray() : null;
@@ -225,14 +218,32 @@ public sealed class SignalCliJsonRpcClientService(
 
     #region Private helpers
 
+    private TimeSpan GetReconnectDelay(int attempt) =>
+        TimeSpan.FromTicks(Math.Min(
+            TimeSpan.FromMilliseconds(options.Value.InitialReconnectDelayMs).Ticks * (1L << Math.Min(attempt - 1, 10)),
+            TimeSpan.FromMilliseconds(options.Value.MaxReconnectDelayMs).Ticks));
+
+    private void LogInitialConnectionFailure(Exception exception, int attempt, TimeSpan delay)
+    {
+        if (attempt == 1)
+        {
+            if (logger.IsEnabled(LogLevel.Warning))
+                logger.LogWarning(exception, "{ClassName} initial connection failed, retrying up to {MaxAttempts} times, first retry in {Delay}",
+                    nameof(SignalCliJsonRpcClientService), options.Value.MaxReconnectAttempts, delay);
+        }
+        else if (logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug(exception, "{ClassName} initial connection attempt {Attempt}/{MaxAttempts} failed, retrying in {Delay}",
+                nameof(SignalCliJsonRpcClientService), attempt, options.Value.MaxReconnectAttempts, delay);
+    }
+
     /// <summary>
     /// Creates a new <see cref="ClientWebSocket"/> and connects to the signal-cli WebSocket endpoint.
     /// </summary>
     private async Task<ClientWebSocket> CreateAndConnectWebSocketAsync(CancellationToken cancellationToken)
     {
         var wsUri = BuildWebSocketUri(options.Value.BaseAddress, options.Value.PhoneNumber);
-        if (logger.IsEnabled(LogLevel.Information))
-            logger.LogInformation("{ClassName} connecting to WebSocket at {Uri}", nameof(SignalCliJsonRpcClientService),
+        if (logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug("{ClassName} connecting to WebSocket at {Uri}", nameof(SignalCliJsonRpcClientService),
                 MaskPhoneNumberInUri(wsUri, options.Value.PhoneNumber));
 
         var ws = new ClientWebSocket();
@@ -262,7 +273,8 @@ public sealed class SignalCliJsonRpcClientService(
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "{ClassName} receive loop exited unexpectedly", nameof(SignalCliJsonRpcClientService));
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning(ex, "{ClassName} receive loop exited unexpectedly", nameof(SignalCliJsonRpcClientService));
             }
 
             if (cancellationToken.IsCancellationRequested)
@@ -271,47 +283,57 @@ public sealed class SignalCliJsonRpcClientService(
             attempt++;
             SignalCliTelemetry.Reconnects.Add(1);
             if (attempt > options.Value.MaxReconnectAttempts)
-            {
-                logger.LogError("{ClassName} exceeded {MaxAttempts} reconnection attempts, giving up",
-                    nameof(SignalCliJsonRpcClientService), options.Value.MaxReconnectAttempts);
                 break;
-            }
 
-            var delay = TimeSpan.FromTicks(Math.Min(
-                TimeSpan.FromMilliseconds(options.Value.InitialReconnectDelayMs).Ticks * (1L << Math.Min(attempt - 1, 10)),
-                TimeSpan.FromMilliseconds(options.Value.MaxReconnectDelayMs).Ticks));
-
-            logger.LogWarning("{ClassName} WebSocket disconnected, reconnecting in {Delay} (attempt {Attempt}/{MaxAttempts})",
-                nameof(SignalCliJsonRpcClientService), delay, attempt, options.Value.MaxReconnectAttempts);
-
-            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-
-            try
-            {
-                _webSocket?.Dispose();
-                _webSocket = null;
-
-                _webSocket = await CreateAndConnectWebSocketAsync(cancellationToken).ConfigureAwait(false);
-                SignalCliTelemetry.ConnectionAttempts.Add(1,
-                    new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "reconnect"),
-                    new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "success"));
-
-                // Reset attempt counter on successful reconnection.
+            if (await TryReconnectAsync(attempt, cancellationToken).ConfigureAwait(false))
                 attempt = 0;
-                if (logger.IsEnabled(LogLevel.Information))
-                    logger.LogInformation("{ClassName} WebSocket reconnected successfully",
-                        nameof(SignalCliJsonRpcClientService));
-            }
-            catch (Exception ex)
-            {
-                SignalCliTelemetry.ConnectionAttempts.Add(1,
-                    new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "reconnect"),
-                    new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "failure"));
-                logger.LogWarning(ex, "{ClassName} reconnection attempt {Attempt} failed",
-                    nameof(SignalCliJsonRpcClientService), attempt);
-            }
         }
 
+        CompleteReceiveLoop(attempt, cancellationToken);
+    }
+
+    private async Task<bool> TryReconnectAsync(int attempt, CancellationToken cancellationToken)
+    {
+        var delay = GetReconnectDelay(attempt);
+        if (attempt == 1)
+        {
+            if (logger.IsEnabled(LogLevel.Warning))
+                logger.LogWarning("{ClassName} WebSocket disconnected, reconnecting in {Delay} (attempt {Attempt}/{MaxAttempts})",
+                    nameof(SignalCliJsonRpcClientService), delay, attempt, options.Value.MaxReconnectAttempts);
+        }
+        else if (logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug("{ClassName} WebSocket still disconnected, reconnecting in {Delay} (attempt {Attempt}/{MaxAttempts})",
+                nameof(SignalCliJsonRpcClientService), delay, attempt, options.Value.MaxReconnectAttempts);
+
+        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _webSocket?.Dispose();
+            _webSocket = null;
+            _webSocket = await CreateAndConnectWebSocketAsync(cancellationToken).ConfigureAwait(false);
+            SignalCliTelemetry.ConnectionAttempts.Add(1,
+                new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "reconnect"),
+                new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "success"));
+
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation("{ClassName} WebSocket reconnected after {Attempts} attempt(s)",
+                    nameof(SignalCliJsonRpcClientService), attempt);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            SignalCliTelemetry.ConnectionAttempts.Add(1,
+                new KeyValuePair<string, object?>(SignalCliTelemetry.PhaseTagName, "reconnect"),
+                new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "failure"));
+            if (logger.IsEnabled(LogLevel.Debug))
+                logger.LogDebug(ex, "{ClassName} reconnection attempt {Attempt} failed",
+                    nameof(SignalCliJsonRpcClientService), attempt);
+            return false;
+        }
+    }
+
+    private void CompleteReceiveLoop(int attempt, CancellationToken cancellationToken)
+    {
         // Only complete the channel when the service is being disposed. The channel is created
         // once in the constructor and never recreated, so completing it on a transient loop exit
         // (e.g. reconnect attempts exhausted) would permanently dead-end ReceiveAsync — every
@@ -320,9 +342,9 @@ public sealed class SignalCliJsonRpcClientService(
         // killing inbound message delivery.
         if (_disposed)
             _channel.Writer.TryComplete();
-        else if (!cancellationToken.IsCancellationRequested)
-            logger.LogError("{ClassName} receive loop terminated while service is still live — inbound Signal messages will no longer be delivered until the service is restarted",
-                nameof(SignalCliJsonRpcClientService));
+        else if (!cancellationToken.IsCancellationRequested && logger.IsEnabled(LogLevel.Error))
+            logger.LogError("{ClassName} receive loop terminated after {Attempts} reconnection attempt(s) while service is still live — inbound Signal messages will no longer be delivered until the service is restarted",
+                nameof(SignalCliJsonRpcClientService), Math.Min(attempt, options.Value.MaxReconnectAttempts));
     }
 
     /// <summary>
@@ -369,9 +391,10 @@ public sealed class SignalCliJsonRpcClientService(
                 if (elapsed < TimeSpan.FromMilliseconds(options.Value.ReceiveStalenessTimeoutMs))
                     continue;
 
-                logger.LogError(
-                    "{ClassName} no inbound Signal frames for {Elapsed} (>{Timeout}) — the signal-cli receive thread may be dead (e.g. poisoned msg-cache). Aborting WebSocket to force a reconnect; if this recurs, check/clear the server-side msg-cache",
-                    nameof(SignalCliJsonRpcClientService), elapsed, TimeSpan.FromMilliseconds(options.Value.ReceiveStalenessTimeoutMs));
+                if (logger.IsEnabled(LogLevel.Error))
+                    logger.LogError(
+                        "{ClassName} no inbound Signal frames for {Elapsed} (>{Timeout}) — the signal-cli receive thread may be dead (e.g. poisoned msg-cache). Aborting WebSocket to force a reconnect; if this recurs, check/clear the server-side msg-cache",
+                        nameof(SignalCliJsonRpcClientService), elapsed, TimeSpan.FromMilliseconds(options.Value.ReceiveStalenessTimeoutMs));
                 SignalCliTelemetry.StaleStreams.Add(1);
 
                 // Reset the stamp first so we re-alert at most once per timeout window while the
@@ -425,8 +448,9 @@ public sealed class SignalCliJsonRpcClientService(
                     result = await _webSocket.ReceiveAsync(buffer, cancellationToken).ConfigureAwait(false);
                     if (result.MessageType is WebSocketMessageType.Close)
                     {
-                        logger.LogWarning("{ClassName} WebSocket closed by server ({Status}: {Description})",
-                            nameof(SignalCliJsonRpcClientService), result.CloseStatus, result.CloseStatusDescription);
+                        if (logger.IsEnabled(LogLevel.Warning))
+                            logger.LogWarning("{ClassName} WebSocket closed by server ({Status}: {Description})",
+                                nameof(SignalCliJsonRpcClientService), result.CloseStatus, result.CloseStatusDescription);
                         return;
                     }
                     stream.Write(buffer, 0, result.Count);
@@ -462,21 +486,24 @@ public sealed class SignalCliJsonRpcClientService(
             }
             catch (WebSocketException ex)
             {
-                logger.LogWarning(ex, "{ClassName} WebSocket receive error, state={State}",
-                    nameof(SignalCliJsonRpcClientService), _webSocket?.State);
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning(ex, "{ClassName} WebSocket receive error, state={State}",
+                        nameof(SignalCliJsonRpcClientService), _webSocket?.State);
                 break;
             }
             catch (JsonException ex)
             {
                 SignalCliTelemetry.Frames.Add(1,
                     new KeyValuePair<string, object?>(SignalCliTelemetry.OutcomeTagName, "invalid_json"));
-                logger.LogWarning(ex, "{ClassName} failed to deserialize WebSocket message",
-                    nameof(SignalCliJsonRpcClientService));
+                if (logger.IsEnabled(LogLevel.Debug))
+                    logger.LogDebug(ex, "{ClassName} failed to deserialize WebSocket message",
+                        nameof(SignalCliJsonRpcClientService));
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "{ClassName} unexpected error in receive loop",
-                    nameof(SignalCliJsonRpcClientService));
+                if (logger.IsEnabled(LogLevel.Warning))
+                    logger.LogWarning(ex, "{ClassName} unexpected error in receive loop",
+                        nameof(SignalCliJsonRpcClientService));
             }
         }
 

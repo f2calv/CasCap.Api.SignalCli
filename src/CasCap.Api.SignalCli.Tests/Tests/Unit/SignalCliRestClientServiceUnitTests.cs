@@ -166,6 +166,47 @@ public class SignalCliRestClientServiceUnitTests(ITestOutputHelper output)
         Assert.Equal("Test group", group.Name);
     }
 
+    [Theory]
+    [Trait("Category", "Creation")]
+    [InlineData(false, 0)]
+    [InlineData(true, 0)]
+    [InlineData(false, 1)]
+    [InlineData(true, 1)]
+    [InlineData(false, 2)]
+    [InlineData(true, 2)]
+    [InlineData(false, 3)]
+    [InlineData(true, 3)]
+    public async Task CreateOperations_PreserveOutcomeAndSingleAttempt(bool poll, int scenario)
+    {
+        var payload = scenario switch
+        {
+            0 when poll => """{"timestamp":"123"}""",
+            0 => """{"id":"created"}""",
+            1 => "null",
+            _ => "\"synthetic-error\""
+        };
+        var statusCode = scenario == 2 ? HttpStatusCode.BadRequest : HttpStatusCode.OK;
+        using var handler = scenario == 3
+            ? new StubHttpMessageHandler(_ => throw new HttpRequestException("synthetic transport failure"))
+            : StubHttpMessageHandler.RespondJson(payload, statusCode);
+        var service = CreateService(handler);
+
+        var result = await CreateResourceAsync(service, poll, TestContext.Current.CancellationToken);
+
+        if (scenario == 0)
+        {
+            if (poll)
+                Assert.Equal("123", Assert.IsType<CreatePollResponse>(result).Timestamp);
+            else
+                Assert.Equal("created", Assert.IsType<CreateGroupResponse>(result).Id);
+        }
+        else
+            Assert.Null(result);
+        var call = Assert.Single(handler.Calls);
+        Assert.Equal(HttpMethod.Post, call.Method);
+        Assert.Equal(poll ? "/v1/polls/%2B10000000000" : "/v1/groups/%2B10000000000", call.PathAndQuery);
+    }
+
     #endregion
 
     #region Failure handling
@@ -229,6 +270,22 @@ public class SignalCliRestClientServiceUnitTests(ITestOutputHelper output)
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => svc.SetPin(Account, "1234", cts.Token));
     }
 
+    [Theory]
+    [Trait("Category", "Creation")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateOperations_WithCancelledToken_ThrowsWithoutSending(bool poll)
+    {
+        using var handler = StubHttpMessageHandler.RespondJson("null");
+        var service = CreateService(handler);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateResourceAsync(service, poll, cts.Token));
+
+        Assert.Empty(handler.Calls);
+    }
+
     #endregion
 
     #region Streaming
@@ -274,6 +331,23 @@ public class SignalCliRestClientServiceUnitTests(ITestOutputHelper output)
     #endregion
 
     #region Private helpers
+
+    private static async Task<object?> CreateResourceAsync(
+        SignalCliRestClientService service, bool poll, CancellationToken cancellationToken)
+    {
+        if (poll)
+            return await service.CreatePoll(Account, new CreatePollRequest
+            {
+                Question = "Example question",
+                Answers = ["First", "Second"],
+                Recipient = "example-group"
+            }, cancellationToken);
+        return await service.CreateGroup(Account, new CreateGroupRequest
+        {
+            Name = "Example group",
+            Members = [Account]
+        }, cancellationToken);
+    }
 
     private static SignalCliRestClientService CreateService(StubHttpMessageHandler handler, int pollIntervalMs = 1_000)
     {
