@@ -8,7 +8,7 @@ signal-cli REST API account. All tests target .NET 10.
 
 | Class | Folder | Methods | Test Cases |
 | --- | --- | --- | --- |
-| `SignalCliRestClientServiceUnitTests` | Unit | 16 | 18 |
+| `SignalCliRestClientServiceUnitTests` | Unit | 18 | 28 |
 | `SignalCliConnectionHealthCheckUnitTests` | Unit | 1 | 1 |
 | `SignalGroupUnitTests` | Unit | 1 | 5 |
 | `SignalCliRegistrationUnitTests` | Unit | 12 | 18 |
@@ -17,10 +17,12 @@ signal-cli REST API account. All tests target .NET 10.
 | `SignalCliSendLoggingTests` | Unit | 1 | 3 |
 | `SignalCliRestClientServiceTests` | Integration | 51 | 51 |
 | `SignalCliJsonRpcClientServiceTests` | Integration | 4 | 4 |
-| **Total** | | **97** | **114** |
+| **Total** | | **99** | **124** |
 
 These are source-declared counts, not execution results. The credential-free subset contains
-59 expanded cases; the 55 declared integration cases include the 17 static skips below.
+69 expanded cases; the 55 declared integration cases include the 17 static skips below.
+Creation cases cover both group and poll response decoding, missing results, HTTP/transport failures,
+single mutation attempts and caller cancellation without sending.
 
 ## Trait Categories
 
@@ -29,6 +31,7 @@ These are source-declared counts, not execution results. The credential-free sub
 | `Unit` | Self-contained tests using a stubbed `HttpMessageHandler`; no server or credentials |
 | `Integration` | Tests requiring a running signal-cli REST API instance |
 | `WebSocket` | Self-contained unit tests for WebSocket/JSON-RPC logic |
+| `Creation` | Offline group/poll mutation outcomes and cancellation |
 
 Integration tests additionally use `Feature` values `General`, `Messaging`, `Registration`, `Accounts`,
 `Contacts`, `Devices`, `Groups`, `Identities`, `Attachments`, `Profile`, `Search` and `StickerPacks`.

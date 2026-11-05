@@ -453,35 +453,8 @@ public sealed class SignalCliRestClientService(
     /// <param name="number">The account phone number.</param>
     /// <param name="request">The group creation request.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<CreateGroupResponse?> CreateGroup(string number, CreateGroupRequest request, CancellationToken cancellationToken = default)
-    {
-        var requestUri = $"v1/groups/{Esc(number)}";
-        try
-        {
-            var tpl = await PostJsonAsync<CreateGroupResponse, string>(requestUri, request, cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (tpl.result is not null)
-            {
-                if (_logger.IsEnabled(LogLevel.Debug))
-                    _logger.LogDebug("{ClassName} group created",
-                        nameof(SignalCliRestClientService));
-            }
-            else if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("{ClassName} create group returned no result",
-                    nameof(SignalCliRestClientService));
-            return tpl.result;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} failed to create group",
-                    nameof(SignalCliRestClientService));
-        }
-        return null;
-    }
+    public Task<CreateGroupResponse?> CreateGroup(string number, CreateGroupRequest request, CancellationToken cancellationToken = default) =>
+        CreateAsync<CreateGroupResponse>($"v1/groups/{Esc(number)}", request, cancellationToken);
 
     /// <summary>
     /// Updates an existing group via <c>PUT /v1/groups/{number}/{groupId}</c>.
@@ -690,35 +663,8 @@ public sealed class SignalCliRestClientService(
     /// <param name="number">The account phone number.</param>
     /// <param name="request">The poll creation request.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<CreatePollResponse?> CreatePoll(string number, CreatePollRequest request, CancellationToken cancellationToken = default)
-    {
-        var requestUri = $"v1/polls/{Esc(number)}";
-        try
-        {
-            var tpl = await PostJsonAsync<CreatePollResponse, string>(requestUri, request, cancellationToken: cancellationToken).ConfigureAwait(false);
-            if (tpl.result is not null)
-            {
-                if (_logger.IsEnabled(LogLevel.Debug))
-                    _logger.LogDebug("{ClassName} poll created",
-                        nameof(SignalCliRestClientService));
-            }
-            else if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning("{ClassName} create poll returned no result",
-                    nameof(SignalCliRestClientService));
-            return tpl.result;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} failed to create poll",
-                    nameof(SignalCliRestClientService));
-        }
-        return null;
-    }
+    public Task<CreatePollResponse?> CreatePoll(string number, CreatePollRequest request, CancellationToken cancellationToken = default) =>
+        CreateAsync<CreatePollResponse>($"v1/polls/{Esc(number)}", request, cancellationToken);
 
     /// <summary>
     /// Closes an existing poll via <c>DELETE /v1/polls/{number}</c>.
@@ -809,6 +755,33 @@ public sealed class SignalCliRestClientService(
 
     #region Private helpers
 
+    private async Task<TResult?> CreateAsync<TResult>(string requestUri, object body, CancellationToken cancellationToken,
+        [CallerMemberName] string? caller = null)
+        where TResult : class
+    {
+        try
+        {
+            var tpl = await PostJsonAsync<TResult, string>(requestUri, body, cancellationToken: cancellationToken).ConfigureAwait(false);
+            if (tpl.result is not null)
+            {
+                if (_logger.IsEnabled(LogLevel.Debug))
+                    _logger.LogDebug("{ClassName} {Caller} completed", nameof(SignalCliRestClientService), caller);
+            }
+            else if (_logger.IsEnabled(LogLevel.Warning))
+                _logger.LogWarning("{ClassName} {Caller} returned no result", nameof(SignalCliRestClientService), caller);
+            return tpl.result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogRequestFailure(ex, caller);
+        }
+        return null;
+    }
+
     private async Task<TResult?> GetAsync<TResult>(string requestUri, CancellationToken cancellationToken = default, [CallerMemberName] string? caller = null)
         where TResult : class
     {
@@ -823,10 +796,7 @@ public sealed class SignalCliRestClientService(
         }
         catch (Exception ex)
         {
-            //The request URI carries account numbers and group identifiers, so only the operation is logged.
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} {Caller} request failed",
-                    nameof(SignalCliRestClientService), caller);
+            LogRequestFailure(ex, caller);
         }
         return default;
     }
@@ -845,9 +815,7 @@ public sealed class SignalCliRestClientService(
         }
         catch (Exception ex)
         {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} {Caller} request failed",
-                    nameof(SignalCliRestClientService), caller);
+            LogRequestFailure(ex, caller);
         }
         return default;
     }
@@ -868,9 +836,7 @@ public sealed class SignalCliRestClientService(
         }
         catch (Exception ex)
         {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} {Caller} request failed",
-                    nameof(SignalCliRestClientService), caller);
+            LogRequestFailure(ex, caller);
         }
         return false;
     }
@@ -891,9 +857,7 @@ public sealed class SignalCliRestClientService(
         }
         catch (Exception ex)
         {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} {Caller} request failed",
-                    nameof(SignalCliRestClientService), caller);
+            LogRequestFailure(ex, caller);
         }
         return false;
     }
@@ -912,9 +876,7 @@ public sealed class SignalCliRestClientService(
         }
         catch (Exception ex)
         {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} {Caller} request failed",
-                    nameof(SignalCliRestClientService), caller);
+            LogRequestFailure(ex, caller);
         }
         return false;
     }
@@ -933,11 +895,17 @@ public sealed class SignalCliRestClientService(
         }
         catch (Exception ex)
         {
-            if (_logger.IsEnabled(LogLevel.Warning))
-                _logger.LogWarning(ex, "{ClassName} {Caller} request failed",
-                    nameof(SignalCliRestClientService), caller);
+            LogRequestFailure(ex, caller);
         }
         return default;
+    }
+
+    private void LogRequestFailure(Exception exception, string? caller)
+    {
+        //Request paths carry account and group identifiers; log only the bounded operation name.
+        if (_logger.IsEnabled(LogLevel.Warning))
+            _logger.LogWarning(exception, "{ClassName} {Caller} request failed",
+                nameof(SignalCliRestClientService), caller);
     }
 
     private async Task<HttpResponseMessage> SendDeleteAsync(string requestUri, object? body, CancellationToken cancellationToken)
