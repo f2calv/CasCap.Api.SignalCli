@@ -185,10 +185,10 @@ public class SignalCliRestClientServiceUnitTests(ITestOutputHelper output)
             1 => "null",
             _ => "\"synthetic-error\""
         };
+        var statusCode = scenario == 2 ? HttpStatusCode.BadRequest : HttpStatusCode.OK;
         using var handler = scenario == 3
             ? new StubHttpMessageHandler(_ => throw new HttpRequestException("synthetic transport failure"))
-            : StubHttpMessageHandler.RespondJson(payload,
-                scenario == 2 ? HttpStatusCode.BadRequest : HttpStatusCode.OK);
+            : StubHttpMessageHandler.RespondJson(payload, statusCode);
         var service = CreateService(handler);
 
         var result = await CreateResourceAsync(service, poll, TestContext.Current.CancellationToken);
