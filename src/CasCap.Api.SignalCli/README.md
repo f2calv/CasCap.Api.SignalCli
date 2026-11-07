@@ -1,6 +1,6 @@
 # CasCap.Api.SignalCli
 
-A .NET 10 client for sending, receiving and managing [Signal](https://signal.org) messages through the
+A .NET 11 client for sending, receiving and managing [Signal](https://signal.org) messages through the
 [signal-cli REST API](https://bbernhard.github.io/signal-cli-rest-api/). It provides typed REST operations,
 HTTP or WebSocket reception, health checks and dependency-injection registration.
 

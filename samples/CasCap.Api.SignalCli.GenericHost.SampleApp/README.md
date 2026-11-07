@@ -1,6 +1,6 @@
 # CasCap.Api.SignalCli.GenericHost.SampleApp
 
-This .NET 10 worker verifies a local signal-cli REST API and continuously consumes its receive stream.
+This .NET 11 worker verifies a local signal-cli REST API and continuously consumes its receive stream.
 
 ## Run Locally
 
