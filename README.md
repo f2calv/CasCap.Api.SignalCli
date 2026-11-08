@@ -1,6 +1,6 @@
 # CasCap.Api.SignalCli
 
-Typed .NET 11 clients for sending and receiving Signal messages through the
+Typed .NET 10/11 clients for sending and receiving Signal messages through the
 [signal-cli REST API](https://github.com/bbernhard/signal-cli-rest-api). Choose HTTP polling or a
 persistent JSON-RPC WebSocket receive stream, with optional ASP.NET Core query endpoints.
 
@@ -98,7 +98,7 @@ filenames or attachment content.
 
 ## Development
 
-With the pinned .NET 11 RC3 SDK, build against published dependencies and run the credential-free subset from
+With the pinned .NET 11 SDK, build against published dependencies and run the credential-free subset from
 the repository root:
 
 ```powershell
