@@ -98,7 +98,7 @@ filenames or attachment content.
 
 ## Development
 
-With the pinned .NET 11 SDK, build against published dependencies and run the credential-free subset from
+With a stable .NET 11 SDK, build against published dependencies and run the credential-free subset from
 the repository root:
 
 ```powershell

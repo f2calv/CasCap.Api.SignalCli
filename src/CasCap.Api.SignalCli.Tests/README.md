@@ -82,7 +82,7 @@ CasCap.Api.SignalCli.Tests/
 
 ## Prerequisites
 
-Use the pinned .NET 11 SDK and run commands from the repository root. Unit tests need no external service.
+Use a stable .NET 11 SDK and run commands from the repository root. Unit tests need no external service.
 Integration tests require:
 
 * A running signal-cli REST API accessible from the test host
