@@ -2,7 +2,7 @@
 
 Credential-free transport, registration and diagnostics tests for
 [CasCap.Api.SignalCli](../CasCap.Api.SignalCli/README.md), plus integration cases requiring a dedicated
-signal-cli REST API account. All tests target .NET 10.
+signal-cli REST API account. All tests target .NET 10 and .NET 11.
 
 ## Tests
 
@@ -82,7 +82,7 @@ CasCap.Api.SignalCli.Tests/
 
 ## Prerequisites
 
-Use the .NET 10 SDK and run commands from the repository root. Unit tests need no external service.
+Use a stable .NET 11 SDK and run commands from the repository root. Unit tests need no external service.
 Integration tests require:
 
 * A running signal-cli REST API accessible from the test host

@@ -1,6 +1,6 @@
 # CasCap.Api.SignalCli.AspNetCore
 
-Authenticated, read-only Signal query endpoints for .NET 10 ASP.NET Core applications. The package
+Authenticated, read-only Signal query endpoints for .NET 10/11 ASP.NET Core applications. The package
 exposes `SignalCliController` over [CasCap.Api.SignalCli](https://www.nuget.org/packages/CasCap.Api.SignalCli)
 without adding MVC dependencies to worker applications.
 
