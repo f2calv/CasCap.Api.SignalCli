@@ -1,9 +1,8 @@
 global using CasCap.Abstractions;
 global using CasCap.Common.Abstractions;
-global using CasCap.Common.Diagnostics.HealthChecks;
-global using CasCap.Common.Diagnostics.HealthChecks.Abstractions;
 global using CasCap.Common.Exceptions;
 global using CasCap.Common.Extensions;
+global using CasCap.Common.HealthChecks;
 global using CasCap.Common.Models;
 global using CasCap.Common.Services;
 global using CasCap.HealthChecks;
