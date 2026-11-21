@@ -1,7 +1,6 @@
 namespace CasCap.Tests.Unit;
 
 /// <summary>Unit tests for <see cref="SignalGroup"/> identifier matching.</summary>
-[Trait("Category", "Unit")]
 public class SignalGroupUnitTests
 {
     [Theory]

@@ -8,7 +8,6 @@ namespace CasCap.Tests.Unit;
 /// <see cref="HttpMessageHandler"/>. They need no signal-cli server and no
 /// credentials, so the suite is green on a clean clone.
 /// </summary>
-[Trait("Category", "Unit")]
 public class SignalCliRestClientServiceUnitTests(ITestOutputHelper output)
 {
     private const string BaseAddress = "http://localhost:8080";

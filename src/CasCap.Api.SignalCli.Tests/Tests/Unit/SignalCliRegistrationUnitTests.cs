@@ -7,7 +7,6 @@ namespace CasCap.Tests.Unit;
 /// Unit tests for <see cref="ServiceCollectionExtensions.AddSignalCli"/> covering interface
 /// registration per transport and basic-auth credential resolution. No signal-cli server is contacted.
 /// </summary>
-[Trait("Category", "Unit")]
 public class SignalCliRegistrationUnitTests(ITestOutputHelper output)
 {
     [Theory]

@@ -28,6 +28,9 @@ public abstract class TestBase : IAsyncDisposable
     /// </summary>
     protected TestBase(ITestOutputHelper output)
     {
+        Assert.SkipUnless(Environment.GetEnvironmentVariable("SIGNAL_CLI_RUN_LIVE_TESTS") == "true",
+            "Set SIGNAL_CLI_RUN_LIVE_TESTS=true to run against a live Signal account.");
+
         _output = output;
 
         _configuration.AddStandardConfiguration("Test", typeof(TestBase).Assembly);

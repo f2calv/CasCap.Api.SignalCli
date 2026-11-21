@@ -36,7 +36,7 @@ single mutation attempts and caller cancellation without sending.
 Integration tests additionally use `Feature` values `General`, `Messaging`, `Registration`, `Accounts`,
 `Contacts`, `Devices`, `Groups`, `Identities`, `Attachments`, `Profile`, `Search` and `StickerPacks`.
 `Transport=Polling` marks the HTTP receive case that is incompatible with JSON-RPC server mode.
-The send-logging cases have no trait; excluding `Category=Integration` includes them.
+The send-logging cases have no trait; excluding `Category=Live` includes them.
 
 ## Skipped Tests
 
@@ -104,7 +104,7 @@ dotnet user-secrets --project src/CasCap.Api.SignalCli.Tests set "SignalCliTests
 The credential-free subset, matching CI:
 
 ```bash
-dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Integration
+dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.csproj --filter-not-trait Category=Live
 ```
 
 Against the repository's JSON-RPC Compose service, additionally exclude the HTTP-polling-only case:
@@ -115,6 +115,7 @@ dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.
 
 This command includes live integration cases. They can send messages and mutate account, contact,
 group or attachment state; use only a disposable test account and review the cases first.
+Set `SIGNAL_CLI_RUN_LIVE_TESTS=true` to opt in; otherwise these tests skip before loading configuration.
 Configuration uses the shared `Test`-environment chain: base settings, optional
 `appsettings.Test.json` and local overrides, User Secrets, then environment variables.
 A missing test file is allowed when another provider supplies the required settings.

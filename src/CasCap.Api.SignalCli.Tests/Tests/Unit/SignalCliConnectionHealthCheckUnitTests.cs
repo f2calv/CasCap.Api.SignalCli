@@ -6,7 +6,6 @@ using System.Net;
 namespace CasCap.Tests.Unit;
 
 /// <summary>Unit tests for <see cref="SignalCliConnectionHealthCheck"/>.</summary>
-[Trait("Category", "Unit")]
 public class SignalCliConnectionHealthCheckUnitTests
 {
     [Fact]

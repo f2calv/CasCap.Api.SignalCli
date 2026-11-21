@@ -7,7 +7,8 @@ namespace CasCap.Tests.Integration;
 /// These tests require a running signal-cli REST API configured via <c>appsettings.Development.json</c>
 /// with a valid <c>SignalCliConfig.BaseAddress</c> and <c>SignalCliConfig.PhoneNumber</c>.
 /// </remarks>
-[Trait(SignalCliTraits.Category, SignalCliTraits.Integration)]
+[Trait("Category", "Integration")]
+[Trait("Category", "Live")]
 public class SignalCliRestClientServiceTests(ITestOutputHelper output) : TestBase(output)
 {
     /// <summary>Prefix used by all integration-test groups so they can be safely swept on teardown.</summary>

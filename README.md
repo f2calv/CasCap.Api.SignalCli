@@ -103,7 +103,7 @@ the repository root:
 
 ```powershell
 dotnet build .\CasCap.Api.SignalCli.Release.slnx --configuration Release
-dotnet test --project .\src\CasCap.Api.SignalCli.Tests\CasCap.Api.SignalCli.Tests.csproj --configuration Release --filter-not-trait Category=Integration
+dotnet test --project .\src\CasCap.Api.SignalCli.Tests\CasCap.Api.SignalCli.Tests.csproj --configuration Release --filter-not-trait Category=Live
 ```
 
 Debug builds instead use an adjacent [CasCap.Common checkout](https://github.com/f2calv/CasCap.Common).

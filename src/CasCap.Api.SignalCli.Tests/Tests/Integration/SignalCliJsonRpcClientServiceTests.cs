@@ -5,6 +5,7 @@ namespace CasCap.Tests.Integration;
 /// instance running in <c>json-rpc</c> mode.
 /// </summary>
 [Trait("Category", "Integration")]
+[Trait("Category", "Live")]
 public class SignalCliJsonRpcClientServiceTests(ITestOutputHelper output) : TestBase(output)
 {
     [Fact]
