@@ -2,7 +2,7 @@ namespace CasCap.Tests.Integration;
 
 /// <summary>
 /// Base class for <see cref="SignalCliRestClientService"/> integration tests.
-/// Reads configuration from <c>appsettings.Test.json</c>, user secrets, and environment variables
+/// Reads configuration from <c>appsettings.Tests.json</c>, user secrets, and environment variables
 /// and builds a minimal DI container that mirrors the production setup.
 /// </summary>
 public abstract class TestBase : IAsyncDisposable
@@ -33,7 +33,7 @@ public abstract class TestBase : IAsyncDisposable
 
         _output = output;
 
-        _configuration.AddStandardConfiguration("Test", typeof(TestBase).Assembly);
+        _configuration.AddStandardConfiguration("Tests", typeof(TestBase).Assembly);
 
         var services = new ServiceCollection()
             .AddSingleton<IConfiguration>(_configuration)

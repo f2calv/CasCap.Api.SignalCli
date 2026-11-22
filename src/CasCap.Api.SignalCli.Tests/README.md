@@ -59,7 +59,7 @@ CasCap.Api.SignalCli.Tests/
 ├── GlobalUsings.cs
 ├── README.md
 ├── appsettings.json
-├── appsettings.Test.json
+├── appsettings.Tests.json
 ├── xunit.runner.json
 └── Tests/
     ├── Unit/
@@ -116,8 +116,8 @@ dotnet test --project src/CasCap.Api.SignalCli.Tests/CasCap.Api.SignalCli.Tests.
 This command includes live integration cases. They can send messages and mutate account, contact,
 group or attachment state; use only a disposable test account and review the cases first.
 Set `SIGNAL_CLI_RUN_LIVE_TESTS=true` to opt in; otherwise these tests skip before loading configuration.
-Configuration uses the shared `Test`-environment chain: base settings, optional
-`appsettings.Test.json` and local overrides, User Secrets, then environment variables.
+Configuration uses the shared `Tests`-environment chain: base settings, optional
+`appsettings.Tests.json` and local overrides, User Secrets, then environment variables.
 A missing test file is allowed when another provider supplies the required settings.
 A missing account or service is not an automatic skip for active
 integration cases. The sample and tests share their User Secrets store.
