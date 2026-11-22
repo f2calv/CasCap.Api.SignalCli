@@ -1,7 +1,7 @@
-using Microsoft.Extensions.Configuration;
-using System.Reflection;
+using CasCap.Common.Extensions;
 
 var builder = Host.CreateApplicationBuilder(args);
+builder.Configuration.AddLocalConfiguration(builder.Environment.EnvironmentName);
 
 builder.Services.AddSignalCli(builder.Configuration);
 

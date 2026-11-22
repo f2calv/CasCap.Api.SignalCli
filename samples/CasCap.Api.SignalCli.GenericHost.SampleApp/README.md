@@ -34,10 +34,18 @@ content, and it never deletes attachments or transcribes audio.
 
 ## Configuration
 
-The Generic Host loads JSON, environment-variable and command-line configuration, and .NET User Secrets
-in the Development environment. The example sets that environment explicitly; outside Development,
+The Generic Host loads base/environment JSON, optional `appsettings.Local.json`,
+`appsettings.Local.{Environment}.json` and `appsettings.Tests.Local.json`, Development User Secrets,
+environment variables and command-line configuration, in ascending priority. Local files use the
+host's content root, the same directory as its default JSON settings. They are gitignored and
+excluded from publishing and packaging. User Secrets override duplicate local values.
+The example sets Development explicitly; outside Development,
 supply the account through another provider, such as `CasCap__SignalCliConfig__PhoneNumber`. See the
 [library configuration reference](../../src/CasCap.Api.SignalCli/README.md#configuration) for every option.
+
+Debug uses an adjacent [CasCap.Common checkout](https://github.com/f2calv/CasCap.Common) for the new
+local-overlay helper. Release requires the next shared configuration package containing
+`AddLocalConfiguration` and an updated package pin.
 
 `TransportMode` defaults to `JsonRpc`, matching the repository's Compose service. The sample and test
 project share a User Secrets store. Stop the container with `docker compose down`; do not add

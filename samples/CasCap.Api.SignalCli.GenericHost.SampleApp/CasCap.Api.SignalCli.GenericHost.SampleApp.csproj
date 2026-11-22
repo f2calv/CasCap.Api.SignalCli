@@ -9,6 +9,14 @@
     <ProjectReference Include="..\..\src\CasCap.Api.SignalCli\CasCap.Api.SignalCli.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+    <ProjectReference Include="..\..\..\CasCap.Common\src\CasCap.Common.Configuration\CasCap.Common.Configuration.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <!-- TODO: Bump CasCap.Common.Configuration after its next release contains AddLocalConfiguration; Debug uses adjacent source until publication. -->
+    <PackageReference Include="CasCap.Common.Configuration" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Update="appsettings*.json" CopyToOutputDirectory="Always" />
     <None Update="appsettings.Local*.json;appsettings.*.Local.json" CopyToOutputDirectory="Always" CopyToPublishDirectory="Never" Pack="false" />
