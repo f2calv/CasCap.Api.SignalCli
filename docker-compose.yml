@@ -13,7 +13,7 @@
 services:
   signalcli:
     # Upstream publishes no :0 major alias; retain this verified release tag.
-    image: bbernhard/signal-cli-rest-api:0.101
+    image: bbernhard/signal-cli-rest-api:0.102
     ports:
       - 127.0.0.1:8080:8080
     environment:
